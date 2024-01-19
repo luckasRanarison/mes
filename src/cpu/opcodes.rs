@@ -1,0 +1,226 @@
+use self::AsmRepr::*;
+use super::{
+    address::AddressMode::{self, *},
+    register::Register::*,
+};
+use lazy_static::lazy_static;
+use std::collections::HashMap;
+
+#[derive(Debug)]
+pub struct Opcode {
+    pub asm: AsmRepr,
+    pub adr_mode: AddressMode,
+    pub cycle: u8,
+}
+
+impl Opcode {
+    fn new(asm: AsmRepr, adr_mode: AddressMode, cycle: u8) -> Self {
+        Self {
+            asm,
+            adr_mode,
+            cycle,
+        }
+    }
+
+    pub fn len(&self) -> u8 {
+        match self.adr_mode {
+            Implied(_) => 1,
+            Immediate | ZeroPage | ZeroPageX | ZeroPageY | IndirectX | IndirectY | Relative => 2,
+            Absolute | AbsoluteX | AbsoluteY | Indirect => 3,
+        }
+    }
+
+    pub fn get_additional_cycles(&self, crossed_boundary: bool) -> u8 {
+        match self.adr_mode {
+            AddressMode::AbsoluteX | AddressMode::AbsoluteY | AddressMode::IndirectY => {
+                (crossed_boundary && self.cycle < 6) as u8
+            }
+            AddressMode::Relative => crossed_boundary as u8 + 1,
+            _ => 0,
+        }
+    }
+
+    pub fn advance_counter(&self) -> bool {
+        !matches!(self.asm, AsmRepr::JMP | AsmRepr::JSR | AsmRepr::RTS)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+#[rustfmt::skip]
+#[allow(clippy::upper_case_acronyms)]
+pub enum AsmRepr {
+    LDA, LDX, LDY,
+    STA, STX, STY,
+    TAX, TAY, TSX, 
+    TXA, TXS, TYA,
+    PHA, PHP, PLA, PLP,
+    DEC, DEX, DEY,
+    INC, INX, INY,
+    ADC, SBC,
+    AND, EOR, ORA,
+    ASL, LSR, ROL, ROR,
+    CLC, CLD, CLI, CLV,
+    SEC, SED, SEI,
+    CMP, CPX, CPY,
+    BCC, BCS, BVC, BVS,
+    BEQ, BMI, BNE, BPL,
+    JMP, JSR, RTS,
+    BRK, RTI,
+    BIT, NOP,
+}
+
+lazy_static! {
+    pub static ref OPCODE_MAP: HashMap<u8, Opcode> = HashMap::from([
+        (0xA9, Opcode::new(LDA, Immediate, 2)),
+        (0xA5, Opcode::new(LDA, ZeroPage, 3)),
+        (0xB5, Opcode::new(LDA, ZeroPageX, 4)),
+        (0xAD, Opcode::new(LDA, Absolute, 4)),
+        (0xBD, Opcode::new(LDA, AbsoluteX, 4)),
+        (0xB9, Opcode::new(LDA, AbsoluteY, 4)),
+        (0xA1, Opcode::new(LDA, IndirectX, 6)),
+        (0xB1, Opcode::new(LDA, IndirectY, 5)),
+        (0xA2, Opcode::new(LDX, Immediate, 2)),
+        (0xA6, Opcode::new(LDX, ZeroPage, 3)),
+        (0xB6, Opcode::new(LDX, ZeroPageY, 4)),
+        (0xAE, Opcode::new(LDX, Absolute, 4)),
+        (0xBE, Opcode::new(LDX, AbsoluteY, 4)),
+        (0xA0, Opcode::new(LDY, Immediate, 2)),
+        (0xA4, Opcode::new(LDY, ZeroPage, 3)),
+        (0xB4, Opcode::new(LDY, ZeroPageX, 4)),
+        (0xAC, Opcode::new(LDY, Absolute, 4)),
+        (0xBC, Opcode::new(LDY, AbsoluteX, 4)),
+        (0x85, Opcode::new(STA, ZeroPage, 3)),
+        (0x95, Opcode::new(STA, ZeroPageX, 4)),
+        (0x8D, Opcode::new(STA, Absolute, 4)),
+        (0x9D, Opcode::new(STA, AbsoluteX, 5)),
+        (0x99, Opcode::new(STA, AbsoluteY, 5)),
+        (0x81, Opcode::new(STA, IndirectX, 6)),
+        (0x91, Opcode::new(STA, IndirectY, 6)),
+        (0x86, Opcode::new(STX, ZeroPage, 3)),
+        (0x96, Opcode::new(STX, ZeroPageY, 4)),
+        (0x8E, Opcode::new(STX, Absolute, 4)),
+        (0x84, Opcode::new(STY, ZeroPage, 3)),
+        (0x94, Opcode::new(STY, ZeroPageX, 4)),
+        (0x8C, Opcode::new(STY, Absolute, 4)),
+        (0xAA, Opcode::new(TAX, Implied(X), 2)),
+        (0xA8, Opcode::new(TAY, Implied(Y), 2)),
+        (0xBA, Opcode::new(TSX, Implied(X), 2)),
+        (0x8A, Opcode::new(TXA, Implied(AC), 2)),
+        (0x9A, Opcode::new(TXS, Implied(SP), 2)),
+        (0x98, Opcode::new(TYA, Implied(AC), 2)),
+        (0xC6, Opcode::new(DEC, ZeroPage, 5)),
+        (0xD6, Opcode::new(DEC, ZeroPageX, 6)),
+        (0xCE, Opcode::new(DEC, Absolute, 6)),
+        (0xDE, Opcode::new(DEC, AbsoluteX, 7)),
+        (0xCA, Opcode::new(DEX, Implied(X), 2)),
+        (0x88, Opcode::new(DEY, Implied(Y), 2)),
+        (0xE6, Opcode::new(INC, ZeroPage, 5)),
+        (0xF6, Opcode::new(INC, ZeroPageX, 6)),
+        (0xEE, Opcode::new(INC, Absolute, 6)),
+        (0xFE, Opcode::new(INC, AbsoluteX, 7)),
+        (0xE8, Opcode::new(INX, Implied(X), 2)),
+        (0xC8, Opcode::new(INY, Implied(Y), 2)),
+        (0x48, Opcode::new(PHA, Implied(AC), 3)),
+        (0x08, Opcode::new(PHP, Implied(SR), 3)),
+        (0x68, Opcode::new(PLA, Implied(AC), 4)),
+        (0x28, Opcode::new(PLP, Implied(SR), 4)),
+        (0x69, Opcode::new(ADC, Immediate, 2)),
+        (0x65, Opcode::new(ADC, ZeroPage, 3)),
+        (0x75, Opcode::new(ADC, ZeroPageX, 4)),
+        (0x6D, Opcode::new(ADC, Absolute, 4)),
+        (0x7D, Opcode::new(ADC, AbsoluteX, 4)),
+        (0x79, Opcode::new(ADC, AbsoluteY, 4)),
+        (0x61, Opcode::new(ADC, IndirectX, 6)),
+        (0x71, Opcode::new(ADC, IndirectY, 5)),
+        (0xE9, Opcode::new(SBC, Immediate, 2)),
+        (0xE5, Opcode::new(SBC, ZeroPage, 3)),
+        (0xF5, Opcode::new(SBC, ZeroPageX, 4)),
+        (0xED, Opcode::new(SBC, Absolute, 4)),
+        (0xFD, Opcode::new(SBC, AbsoluteX, 4)),
+        (0xF9, Opcode::new(SBC, AbsoluteY, 4)),
+        (0xE1, Opcode::new(SBC, IndirectX, 6)),
+        (0xF1, Opcode::new(SBC, IndirectY, 5)),
+        (0x29, Opcode::new(AND, Immediate, 2)),
+        (0x25, Opcode::new(AND, ZeroPage, 3)),
+        (0x35, Opcode::new(AND, ZeroPageX, 4)),
+        (0x2D, Opcode::new(AND, Absolute, 4)),
+        (0x3D, Opcode::new(AND, AbsoluteX, 4)),
+        (0x39, Opcode::new(AND, AbsoluteY, 4)),
+        (0x21, Opcode::new(AND, IndirectX, 6)),
+        (0x31, Opcode::new(AND, IndirectY, 5)),
+        (0x49, Opcode::new(EOR, Immediate, 2)),
+        (0x45, Opcode::new(EOR, ZeroPage, 3)),
+        (0x55, Opcode::new(EOR, ZeroPageX, 4)),
+        (0x4D, Opcode::new(EOR, Absolute, 4)),
+        (0x5D, Opcode::new(EOR, AbsoluteX, 4)),
+        (0x59, Opcode::new(EOR, AbsoluteY, 4)),
+        (0x41, Opcode::new(EOR, IndirectX, 6)),
+        (0x51, Opcode::new(EOR, IndirectY, 5)),
+        (0x09, Opcode::new(ORA, Immediate, 2)),
+        (0x05, Opcode::new(ORA, ZeroPage, 3)),
+        (0x15, Opcode::new(ORA, ZeroPageX, 4)),
+        (0x0D, Opcode::new(ORA, Absolute, 4)),
+        (0x1D, Opcode::new(ORA, AbsoluteX, 4)),
+        (0x19, Opcode::new(ORA, AbsoluteY, 4)),
+        (0x01, Opcode::new(ORA, IndirectX, 6)),
+        (0x11, Opcode::new(ORA, IndirectY, 5)),
+        (0x0A, Opcode::new(ASL, Implied(AC), 2)),
+        (0x06, Opcode::new(ASL, ZeroPage, 5)),
+        (0x16, Opcode::new(ASL, ZeroPageX, 6)),
+        (0x0E, Opcode::new(ASL, Absolute, 6)),
+        (0x1E, Opcode::new(ASL, AbsoluteX, 7)),
+        (0x4A, Opcode::new(LSR, Implied(AC), 2)),
+        (0x46, Opcode::new(LSR, ZeroPage, 5)),
+        (0x56, Opcode::new(LSR, ZeroPageX, 6)),
+        (0x4E, Opcode::new(LSR, Absolute, 6)),
+        (0x5E, Opcode::new(LSR, AbsoluteX, 7)),
+        (0x2A, Opcode::new(ROL, Implied(AC), 2)),
+        (0x26, Opcode::new(ROL, ZeroPage, 5)),
+        (0x36, Opcode::new(ROL, ZeroPageX, 6)),
+        (0x2E, Opcode::new(ROL, Absolute, 6)),
+        (0x3E, Opcode::new(ROL, AbsoluteX, 7)),
+        (0x6A, Opcode::new(ROR, Implied(AC), 2)),
+        (0x66, Opcode::new(ROR, ZeroPage, 5)),
+        (0x76, Opcode::new(ROR, ZeroPageX, 6)),
+        (0x6E, Opcode::new(ROR, Absolute, 6)),
+        (0x7E, Opcode::new(ROR, AbsoluteX, 7)),
+        (0x18, Opcode::new(CLC, Implied(SR), 2)),
+        (0xD8, Opcode::new(CLD, Implied(SR), 2)),
+        (0x58, Opcode::new(CLI, Implied(SR), 2)),
+        (0xB8, Opcode::new(CLV, Implied(SR), 2)),
+        (0x38, Opcode::new(SEC, Implied(SR), 2)),
+        (0xF8, Opcode::new(SED, Implied(SR), 2)),
+        (0x78, Opcode::new(SEI, Implied(SR), 2)),
+        (0xC9, Opcode::new(CMP, Immediate, 2)),
+        (0xC5, Opcode::new(CMP, ZeroPage, 3)),
+        (0xD5, Opcode::new(CMP, ZeroPageX, 4)),
+        (0xCD, Opcode::new(CMP, Absolute, 4)),
+        (0xDD, Opcode::new(CMP, AbsoluteX, 4)),
+        (0xD9, Opcode::new(CMP, AbsoluteY, 4)),
+        (0xC1, Opcode::new(CMP, IndirectX, 6)),
+        (0xD1, Opcode::new(CMP, IndirectY, 5)),
+        (0xE0, Opcode::new(CPX, Immediate, 2)),
+        (0xE4, Opcode::new(CPX, ZeroPage, 3)),
+        (0xEC, Opcode::new(CPX, Absolute, 4)),
+        (0xC0, Opcode::new(CPY, Immediate, 2)),
+        (0xC4, Opcode::new(CPY, ZeroPage, 3)),
+        (0xCC, Opcode::new(CPY, Absolute, 4)),
+        (0x90, Opcode::new(BCC, Relative, 2)),
+        (0xB0, Opcode::new(BCS, Relative, 2)),
+        (0xF0, Opcode::new(BEQ, Relative, 2)),
+        (0x30, Opcode::new(BMI, Relative, 2)),
+        (0xD0, Opcode::new(BNE, Relative, 2)),
+        (0x10, Opcode::new(BPL, Relative, 2)),
+        (0x50, Opcode::new(BVC, Relative, 2)),
+        (0x70, Opcode::new(BVS, Relative, 2)),
+        (0x4C, Opcode::new(JMP, Absolute, 3)),
+        (0x6C, Opcode::new(JMP, Indirect, 5)),
+        (0x20, Opcode::new(JSR, Absolute, 6)),
+        (0x60, Opcode::new(RTS, Implied(PC), 6)),
+        (0x00, Opcode::new(BRK, Implied(PC), 7)),
+        (0x40, Opcode::new(RTI, Implied(PC), 6)),
+        (0x24, Opcode::new(BIT, ZeroPage, 3)),
+        (0x2C, Opcode::new(BIT, Absolute, 4)),
+        (0xEA, Opcode::new(NOP, Implied(PC), 2)),
+    ]);
+}
