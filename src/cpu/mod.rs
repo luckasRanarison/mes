@@ -3,16 +3,17 @@ mod opcodes;
 mod register;
 
 use address::{Address, AddressMode};
-use opcodes::{AsmRepr, OPCODE_MAP};
+use opcodes::{Asm, OPCODE_MAP};
 
-use crate::bus::Bus;
+use crate::{
+    bus::Bus,
+    cpu::register::{Register, StatusRegister},
+};
 
 use std::{
     fmt,
     ops::{BitAnd, BitOr, BitXor},
 };
-
-use self::register::{Register, StatusRegister};
 
 const STACK_START: u16 = 0x100;
 const INITIAL_PC: u16 = 0xC000;
@@ -38,7 +39,7 @@ impl Cpu {
             ac: 0x00,
             x: 0x00,
             y: 0x00,
-            sr: StatusRegister::default(),
+            sr: StatusRegister::new(),
             sp: 0xFF,
             bus: Box::new(bus),
             cycle: 0,
@@ -54,7 +55,7 @@ impl Cpu {
     }
 
     pub fn fetch(&mut self) -> u8 {
-        let opcode = self.bus.read_byte(self.pc);
+        let opcode = self.bus.read_u8(self.pc);
         self.increment_pc(1);
         opcode
     }
@@ -66,62 +67,62 @@ impl Cpu {
         let additional_cycle = opcode.get_additional_cycles(crossed_boundary);
 
         match opcode.asm {
-            AsmRepr::LDA => self.lda(address),
-            AsmRepr::LDX => self.ldx(address),
-            AsmRepr::LDY => self.ldy(address),
-            AsmRepr::STA => self.sta(address),
-            AsmRepr::STX => self.stx(address),
-            AsmRepr::STY => self.sty(address),
-            AsmRepr::TAX => self.tax(),
-            AsmRepr::TAY => self.tay(),
-            AsmRepr::TSX => self.tsx(),
-            AsmRepr::TXA => self.txa(),
-            AsmRepr::TXS => self.txs(),
-            AsmRepr::TYA => self.tya(),
-            AsmRepr::PHA => self.pha(),
-            AsmRepr::PHP => self.php(),
-            AsmRepr::PLA => self.pla(),
-            AsmRepr::PLP => self.plp(),
-            AsmRepr::DEC => self.dec(address),
-            AsmRepr::DEX => self.dex(),
-            AsmRepr::DEY => self.dey(),
-            AsmRepr::INC => self.inc(address),
-            AsmRepr::INX => self.inx(),
-            AsmRepr::INY => self.iny(),
-            AsmRepr::ADC => self.adc(address),
-            AsmRepr::SBC => self.sbc(address),
-            AsmRepr::AND => self.and(address),
-            AsmRepr::EOR => self.eor(address),
-            AsmRepr::ORA => self.ora(address),
-            AsmRepr::ASL => self.asl(address),
-            AsmRepr::LSR => self.lsr(address),
-            AsmRepr::ROL => self.rol(address),
-            AsmRepr::ROR => self.ror(address),
-            AsmRepr::CLC => self.clc(),
-            AsmRepr::CLD => self.cld(),
-            AsmRepr::CLI => self.cli(),
-            AsmRepr::CLV => self.clv(),
-            AsmRepr::SEC => self.sec(),
-            AsmRepr::SED => self.sed(),
-            AsmRepr::SEI => self.sei(),
-            AsmRepr::CMP => self.cmp(address),
-            AsmRepr::CPX => self.cpx(address),
-            AsmRepr::CPY => self.cpy(address),
-            AsmRepr::BCC => self.bcc(address),
-            AsmRepr::BCS => self.bcs(address),
-            AsmRepr::BVC => self.bvc(address),
-            AsmRepr::BVS => self.bvs(address),
-            AsmRepr::BEQ => self.beq(address),
-            AsmRepr::BMI => self.bmi(address),
-            AsmRepr::BNE => self.bne(address),
-            AsmRepr::BPL => self.bpl(address),
-            AsmRepr::JMP => self.jmp(address),
-            AsmRepr::JSR => self.jsr(address),
-            AsmRepr::RTS => self.rts(),
-            AsmRepr::BRK => self.brk(),
-            AsmRepr::RTI => self.rti(),
-            AsmRepr::BIT => self.bit(address),
-            AsmRepr::NOP => self.nop(),
+            Asm::LDA => self.lda(address),
+            Asm::LDX => self.ldx(address),
+            Asm::LDY => self.ldy(address),
+            Asm::STA => self.sta(address),
+            Asm::STX => self.stx(address),
+            Asm::STY => self.sty(address),
+            Asm::TAX => self.tax(),
+            Asm::TAY => self.tay(),
+            Asm::TSX => self.tsx(),
+            Asm::TXA => self.txa(),
+            Asm::TXS => self.txs(),
+            Asm::TYA => self.tya(),
+            Asm::PHA => self.pha(),
+            Asm::PHP => self.php(),
+            Asm::PLA => self.pla(),
+            Asm::PLP => self.plp(),
+            Asm::DEC => self.dec(address),
+            Asm::DEX => self.dex(),
+            Asm::DEY => self.dey(),
+            Asm::INC => self.inc(address),
+            Asm::INX => self.inx(),
+            Asm::INY => self.iny(),
+            Asm::ADC => self.adc(address),
+            Asm::SBC => self.sbc(address),
+            Asm::AND => self.and(address),
+            Asm::EOR => self.eor(address),
+            Asm::ORA => self.ora(address),
+            Asm::ASL => self.asl(address),
+            Asm::LSR => self.lsr(address),
+            Asm::ROL => self.rol(address),
+            Asm::ROR => self.ror(address),
+            Asm::CLC => self.clc(),
+            Asm::CLD => self.cld(),
+            Asm::CLI => self.cli(),
+            Asm::CLV => self.clv(),
+            Asm::SEC => self.sec(),
+            Asm::SED => self.sed(),
+            Asm::SEI => self.sei(),
+            Asm::CMP => self.cmp(address),
+            Asm::CPX => self.cpx(address),
+            Asm::CPY => self.cpy(address),
+            Asm::BCC => self.bcc(address),
+            Asm::BCS => self.bcs(address),
+            Asm::BVC => self.bvc(address),
+            Asm::BVS => self.bvs(address),
+            Asm::BEQ => self.beq(address),
+            Asm::BMI => self.bmi(address),
+            Asm::BNE => self.bne(address),
+            Asm::BPL => self.bpl(address),
+            Asm::JMP => self.jmp(address),
+            Asm::JSR => self.jsr(address),
+            Asm::RTS => self.rts(),
+            Asm::BRK => self.brk(),
+            Asm::RTI => self.rti(),
+            Asm::BIT => self.bit(address),
+            Asm::NOP => self.nop(),
         }
 
         if opcode.advance_counter() {
@@ -149,47 +150,47 @@ impl Cpu {
             AddressMode::Implied(reg) => (Address::Register(reg), false),
             AddressMode::Immediate => (Address::Memory(self.pc), false),
             AddressMode::Absolute => {
-                let address = self.bus.read_word(self.pc);
+                let address = self.bus.read_u16(self.pc);
                 (Address::Memory(address), false)
             }
             AddressMode::ZeroPage => {
-                let address = self.bus.read_byte(self.pc) as u16;
+                let address = self.bus.read_u8(self.pc) as u16;
                 (Address::Memory(address), false)
             }
             AddressMode::AbsoluteX => {
-                let address = self.bus.read_word(self.pc);
+                let address = self.bus.read_u16(self.pc);
                 let (address, crossed) = self.get_effective_address(address, self.x);
                 (Address::Memory(address), crossed)
             }
             AddressMode::AbsoluteY => {
-                let address = self.bus.read_word(self.pc);
+                let address = self.bus.read_u16(self.pc);
                 let (address, crossed) = self.get_effective_address(address, self.y);
                 (Address::Memory(address), crossed)
             }
             AddressMode::ZeroPageX => {
-                let address = self.bus.read_byte(self.pc).wrapping_add(self.x);
+                let address = self.bus.read_u8(self.pc).wrapping_add(self.x);
                 (Address::Memory(address as u16), false)
             }
             AddressMode::ZeroPageY => {
-                let address = self.bus.read_byte(self.pc).wrapping_add(self.y);
+                let address = self.bus.read_u8(self.pc).wrapping_add(self.y);
                 (Address::Memory(address as u16), false)
             }
             AddressMode::Indirect => {
-                let address = self.bus.read_word(self.bus.read_word(self.pc));
+                let address = self.bus.read_u16(self.bus.read_u16(self.pc));
                 (Address::Memory(address), false)
             }
             AddressMode::IndirectX => {
-                let lookup_adr = self.bus.read_byte(self.pc).wrapping_add(self.x);
-                let address = self.bus.read_word(lookup_adr as u16);
+                let lookup_adr = self.bus.read_u8(self.pc).wrapping_add(self.x);
+                let address = self.bus.read_u16(lookup_adr as u16);
                 (Address::Memory(address), false)
             }
             AddressMode::IndirectY => {
-                let address = self.bus.read_word(self.bus.read_byte(self.pc) as u16);
+                let address = self.bus.read_u16(self.bus.read_u8(self.pc) as u16);
                 let (address, crossed) = self.get_effective_address(address, self.y);
                 (Address::Memory(address), crossed)
             }
             AddressMode::Relative => {
-                let offset = self.bus.read_byte(self.pc);
+                let offset = self.bus.read_u8(self.pc);
                 let (address, crossed) = self.get_effective_address(self.pc, offset);
                 (Address::Memory(address), crossed)
             }
@@ -198,14 +199,14 @@ impl Cpu {
 
     fn read_address(&self, address: Address) -> u8 {
         match address {
-            Address::Memory(adr) => self.bus.read_byte(adr),
+            Address::Memory(adr) => self.bus.read_u8(adr),
             Address::Register(reg) => self.get_register(reg),
         }
     }
 
     fn write_address(&mut self, address: Address, value: u8) {
         match address {
-            Address::Memory(adr) => self.bus.write_byte(adr, value),
+            Address::Memory(adr) => self.bus.write_u8(adr, value),
             Address::Register(reg) => *self.get_register_mut(reg) = value,
         }
     }
@@ -215,9 +216,8 @@ impl Cpu {
             Register::AC => self.ac,
             Register::X => self.x,
             Register::Y => self.y,
-            Register::SR => *self.sr,
             Register::SP => self.sp,
-            Register::PC => unreachable!(),
+            _ => unreachable!(),
         }
     }
 
@@ -226,31 +226,30 @@ impl Cpu {
             Register::AC => &mut self.ac,
             Register::X => &mut self.x,
             Register::Y => &mut self.y,
-            Register::SR => &mut self.sr,
             Register::SP => &mut self.sp,
-            Register::PC => unreachable!(),
+            _ => unreachable!(),
         }
     }
 
-    fn push_stack_byte(&mut self, value: u8) {
-        self.bus.write_byte(self.sp as u16 + STACK_START, value);
+    fn push_stack_u8(&mut self, value: u8) {
+        self.bus.write_u8(self.sp as u16 + STACK_START, value);
         self.sp = self.sp.wrapping_sub(1);
     }
 
-    fn pull_stack_byte(&mut self) -> u8 {
+    fn pull_stack_u8(&mut self) -> u8 {
         self.sp = self.sp.wrapping_add(1);
-        self.bus.read_byte(self.sp as u16 + STACK_START)
+        self.bus.read_u8(self.sp as u16 + STACK_START)
     }
 
-    fn push_stack_word(&mut self, value: u16) {
+    fn push_stack_u16(&mut self, value: u16) {
         let [low, high] = value.to_le_bytes();
-        self.push_stack_byte(high);
-        self.push_stack_byte(low);
+        self.push_stack_u8(high);
+        self.push_stack_u8(low);
     }
 
-    fn pull_stack_word(&mut self) -> u16 {
-        let low = self.pull_stack_byte();
-        let high = self.pull_stack_byte();
+    fn pull_stack_u16(&mut self) -> u16 {
+        let low = self.pull_stack_u8();
+        let high = self.pull_stack_u8();
         u16::from_le_bytes([low, high])
     }
 
@@ -303,22 +302,24 @@ impl Cpu {
     }
 
     fn pha(&mut self) {
-        self.push_stack_byte(self.ac);
+        self.push_stack_u8(self.ac);
     }
 
     fn php(&mut self) {
-        self.sr.update_break(true);
-        self.push_stack_byte(*self.sr);
+        self.sr.b = true;
+        self.push_stack_u8(self.sr.as_u8());
     }
 
     fn pla(&mut self) {
-        let value = self.pull_stack_byte();
-        self.sr.update_negative(value).update_zero(value);
+        let value = self.pull_stack_u8();
+        self.sr.update_n(value);
+        self.sr.update_z(value);
         self.ac = value;
     }
 
     fn plp(&mut self) {
-        *self.sr = (self.pull_stack_byte() & 0b1110_1111) | (self.sr.get_break() << 4);
+        let status = (self.pull_stack_u8() & 0b1110_1111) | ((self.sr.b as u8) << 4);
+        self.sr = StatusRegister::from_u8(status);
     }
 
     fn dec(&mut self, address: Address) {
@@ -370,71 +371,67 @@ impl Cpu {
     fn asl(&mut self, address: Address) {
         let operand = self.read_address(address);
         let result = operand.wrapping_shl(1);
-        self.sr
-            .update_carry(operand >> 7 == 1)
-            .update_negative(result)
-            .update_zero(result);
+        self.sr.c = operand >> 7 == 1;
+        self.sr.update_n(result);
+        self.sr.update_z(result);
         self.write_address(address, result);
     }
 
     fn lsr(&mut self, address: Address) {
         let operand = self.read_address(address);
         let result = operand.wrapping_shr(1);
-        self.sr
-            .update_carry(operand << 7 == 128)
-            .update_negative(result)
-            .update_zero(result);
+        self.sr.c = operand << 7 == 128;
+        self.sr.update_n(result);
+        self.sr.update_z(result);
         self.write_address(address, result);
     }
 
     fn rol(&mut self, address: Address) {
         let operand = self.read_address(address);
-        let carry_bit = self.sr.get_carry();
+        let carry_bit = self.sr.c as u8;
         let result = operand.wrapping_shl(1) | carry_bit;
-        self.sr
-            .update_carry(operand >> 7 == 1)
-            .update_negative(result)
-            .update_zero(result);
+        self.sr.c = operand >> 7 == 1;
+        self.sr.update_n(result);
+        self.sr.update_z(result);
         self.write_address(address, result);
     }
 
     fn ror(&mut self, address: Address) {
         let operand = self.read_address(address);
-        let carry_bit = self.sr.get_carry();
+        let carry_bit = self.sr.c as u8;
         let result = operand.wrapping_shr(1) | (carry_bit << 7);
-        self.sr
-            .update_carry(operand & 1 == 1)
-            .update_negative(result)
-            .update_zero(result);
+        self.sr.c = operand & 1 == 1;
+        self.sr.update_n(result);
+        self.sr.update_z(result);
         self.write_address(address, result);
     }
 
     fn clc(&mut self) {
-        self.sr.update_carry(false);
+        self.sr.c = false;
     }
 
     fn cld(&mut self) {
-        self.sr.update_decimal(false);
+        self.sr.d = false;
     }
 
     fn cli(&mut self) {
-        self.sr.update_interrupt(false);
+        self.sr.i = false;
     }
 
     fn clv(&mut self) {
-        self.sr.update_overflow(false);
+        self.sr.v = false;
     }
 
     fn sec(&mut self) {
-        self.sr.update_carry(true);
+        self.sr.c = true;
     }
 
     fn sei(&mut self) {
-        self.sr.update_interrupt(true);
+        self.sr.i = true;
     }
 
     fn sed(&mut self) {
-        self.sr.update_decimal(true);
+        self.sr.d = true;
     }
 
     fn cmp(&mut self, address: Address) {
@@ -450,75 +447,76 @@ impl Cpu {
     }
 
     fn bcc(&mut self, address: Address) {
-        self.branch(self.sr.get_carry() == 0, address);
+        self.branch(!self.sr.c, address);
     }
 
     fn bcs(&mut self, address: Address) {
-        self.branch(self.sr.get_carry() == 1, address);
+        self.branch(self.sr.c, address);
     }
 
     fn beq(&mut self, address: Address) {
-        self.branch(self.sr.get_zero() == 1, address);
+        self.branch(self.sr.z, address);
     }
 
     fn bmi(&mut self, address: Address) {
-        self.branch(self.sr.get_negative() == 1, address);
+        self.branch(self.sr.n, address);
     }
 
     fn bne(&mut self, address: Address) {
-        self.branch(self.sr.get_zero() == 0, address);
+        self.branch(!self.sr.z, address);
     }
 
     fn bpl(&mut self, address: Address) {
-        self.branch(self.sr.get_negative() == 0, address);
+        self.branch(!self.sr.n, address);
     }
 
     fn bvc(&mut self, address: Address) {
-        self.branch(self.sr.get_overflow() == 0, address);
+        self.branch(!self.sr.v, address);
     }
 
     fn bvs(&mut self, address: Address) {
-        self.branch(self.sr.get_overflow() == 1, address);
+        self.branch(self.sr.v, address);
     }
 
     fn jmp(&mut self, address: Address) {
-        self.pc = address.memory_unchecked();
+        self.pc = address.to_memory_unchecked();
     }
 
     fn jsr(&mut self, address: Address) {
-        self.push_stack_word(self.pc + 1);
-        self.pc = address.memory_unchecked();
+        self.push_stack_u16(self.pc + 1);
+        self.pc = address.to_memory_unchecked();
     }
 
     fn rts(&mut self) {
-        self.pc = self.pull_stack_word() + 1;
+        self.pc = self.pull_stack_u16() + 1;
     }
 
     fn brk(&mut self) {
-        self.sr.update_break(true).update_interrupt(true);
-        self.push_stack_word(self.pc + 2);
-        self.push_stack_byte(*self.sr);
+        self.sr.b = true;
+        self.sr.i = true;
+        self.push_stack_u16(self.pc + 2);
+        self.push_stack_u8(self.sr.as_u8());
     }
 
     fn rti(&mut self) {
         self.plp();
-        self.pc = self.pull_stack_word();
+        self.pc = self.pull_stack_u16();
     }
 
     fn bit(&mut self, address: Address) {
         let rhs = self.read_address(address);
         let result = self.ac & rhs;
-        self.sr
-            .update_zero(result)
-            .update_negative(rhs)
-            .update_overflow((rhs >> 6 & 1) == 1);
+        self.sr.update_z(result);
+        self.sr.update_n(rhs);
+        self.sr.v = (rhs >> 6 & 1) == 1;
     }
 
     fn nop(&self) {}
 
     fn load(&mut self, address: Address, register: Register) {
         let value = self.read_address(address);
-        self.sr.update_negative(value).update_zero(value);
+        self.sr.update_n(value);
+        self.sr.update_z(value);
         *self.get_register_mut(register) = value;
     }
 
@@ -529,39 +527,42 @@ impl Cpu {
 
     fn transfert(&mut self, src: Register, dst: Register) {
         let value = self.get_register(src);
-        self.sr.update_negative(value).update_zero(value);
+        self.sr.update_n(value);
+        self.sr.update_z(value);
         *self.get_register_mut(dst) = value;
     }
 
     fn decrement(&mut self, address: Address) {
         let result = self.read_address(address).wrapping_sub(1);
-        self.sr.update_negative(result).update_zero(result);
+        self.sr.update_n(result);
+        self.sr.update_z(result);
         self.write_address(address, result);
     }
 
     fn increment(&mut self, address: Address) {
         let result = self.read_address(address).wrapping_add(1);
-        self.sr.update_negative(result).update_zero(result);
+        self.sr.update_n(result);
+        self.sr.update_z(result);
         self.write_address(address, result);
     }
 
     fn add_to_accumulator(&mut self, value: u8) {
-        let carry = self.sr.get_carry();
+        let carry = self.sr.c as u8;
         let (sum, c1) = self.ac.overflowing_add(value);
         let (sum, c2) = sum.overflowing_add(carry);
         let signed_sum = (self.ac as i8 as i16) + (value as i8 as i16) + carry as i16;
-        self.sr
-            .update_carry(c1 || c2)
-            .update_overflow(!(-128..=127).contains(&signed_sum))
-            .update_negative(sum)
-            .update_zero(sum);
+        self.sr.c = c1 || c2;
+        self.sr.v = !(-128..=127).contains(&signed_sum);
+        self.sr.update_n(sum);
+        self.sr.update_z(sum);
         self.ac = sum;
     }
 
     fn binary_op(&mut self, address: Address, f: fn(u8, u8) -> u8) {
         let rhs = self.read_address(address);
         let result = f(self.ac, rhs);
-        self.sr.update_negative(result).update_zero(result);
+        self.sr.update_n(result);
+        self.sr.update_z(result);
         self.ac = result;
     }
 
@@ -570,37 +571,49 @@ impl Cpu {
         let rhs = self.read_address(address);
         let (sum, c1) = lhs.overflowing_add(!rhs);
         let (sum, c2) = sum.overflowing_add(1);
-        self.sr
-            .update_carry(c1 || c2)
-            .update_negative(sum)
-            .update_zero(sum);
+        self.sr.c = c1 || c2;
+        self.sr.update_n(sum);
+        self.sr.update_z(sum);
     }
 
     fn branch(&mut self, predicate: bool, address: Address) {
         if predicate {
-            self.pc = address.memory_unchecked();
+            self.pc = address.to_memory_unchecked();
         }
     }
 }
 
 impl fmt::Debug for Cpu {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "program_counter: 0x{:x}", self.pc)?;
-        writeln!(f, "accumulator: {}", self.ac)?;
-        writeln!(f, "register_x: {}", self.x)?;
-        writeln!(f, "register_y: {}", self.y)?;
-        writeln!(f, "status_register: {:?}", self.sr)?;
-        writeln!(f, "stack_pointer: 0x{:x}", self.sp)
+        writeln!(f, "Cpu {{")?;
+        writeln!(f, "  pc: 0x{:x}", self.pc)?;
+        writeln!(f, "  ac: {}", self.ac)?;
+        writeln!(f, "  x: {}", self.x)?;
+        writeln!(f, "  y: {}", self.y)?;
+        writeln!(
+            f,
+            "  sr: {{ N: {}, V: {}, _: {}, B: {}, D: {}, I: {}, Z: {}, C: {} }}",
+            self.sr.n as u8,
+            self.sr.v as u8,
+            self.sr.__ as u8,
+            self.sr.b as u8,
+            self.sr.d as u8,
+            self.sr.i as u8,
+            self.sr.z as u8,
+            self.sr.c as u8
+        )?;
+        writeln!(f, "  sp: 0x{:x}", self.sp)?;
+        writeln!(f, "}}")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Cpu;
-    use crate::bus::Bus;
+    use super::*;
 
     const INITIAL_PC: usize = 0xC000;
 
+    #[derive(Debug)]
     struct BusMock {
         ram: [u8; 0xFFFF],
     }
@@ -612,17 +625,17 @@ mod tests {
     }
 
     impl Bus for BusMock {
-        fn read_byte(&self, address: u16) -> u8 {
+        fn read_u8(&self, address: u16) -> u8 {
             self.ram[address as usize]
         }
 
-        fn read_word(&self, address: u16) -> u16 {
+        fn read_u16(&self, address: u16) -> u16 {
             let low = self.ram[address as usize];
             let high = self.ram[address as usize + 1];
             u16::from_le_bytes([low, high])
         }
 
-        fn write_byte(&mut self, address: u16, value: u8) {
+        fn write_u8(&mut self, address: u16, value: u8) {
             self.ram[address as usize] = value;
         }
     }
@@ -640,17 +653,17 @@ mod tests {
     fn test_stack() {
         let mut cpu = Cpu::new(BusMock::default());
 
-        cpu.push_stack_byte(0x30);
+        cpu.push_stack_u8(0x30);
 
         assert_eq!(cpu.sp, 0xFE);
-        assert_eq!(cpu.bus.read_byte(0x1FF), 0x30);
-        assert_eq!(cpu.pull_stack_byte(), 0x30);
+        assert_eq!(cpu.bus.read_u8(0x1FF), 0x30);
+        assert_eq!(cpu.pull_stack_u8(), 0x30);
         assert_eq!(cpu.sp, 0xFF);
 
-        cpu.push_stack_word(0x4530);
+        cpu.push_stack_u16(0x4530);
 
         assert_eq!(cpu.sp, 0xFD);
-        assert_eq!(cpu.pull_stack_word(), 0x4530);
+        assert_eq!(cpu.pull_stack_u16(), 0x4530);
         assert_eq!(cpu.sp, 0xFF);
     }
 
@@ -669,7 +682,7 @@ mod tests {
 
         cpu.step(2);
 
-        assert_eq!(cpu.bus.read_byte(0x3245), 0x5F);
+        assert_eq!(cpu.bus.read_u8(0x3245), 0x5F);
     }
 
     #[test]
@@ -678,7 +691,7 @@ mod tests {
 
         cpu.step(2);
 
-        assert_eq!(cpu.bus.read_byte(0x0010), 0x15);
+        assert_eq!(cpu.bus.read_u8(0x0010), 0x15);
     }
 
     #[test]
@@ -765,18 +778,18 @@ mod tests {
         cpu.step(3);
 
         assert_eq!(cpu.ac, 0xE0);
-        assert_eq!(cpu.sr.get_negative(), 1);
-        assert_eq!(cpu.sr.get_overflow(), 1);
-        assert_eq!(cpu.sr.get_carry(), 0);
+        assert!(cpu.sr.n);
+        assert!(cpu.sr.v);
+        assert!(!cpu.sr.c);
 
         let mut cpu = cpu_with_program(&[0xA9, 0xFF, 0x85, 0x10, 0x65, 0x10]);
 
         cpu.step(3);
 
         assert_eq!(cpu.ac, 0xFE);
-        assert_eq!(cpu.sr.get_negative(), 1);
-        assert_eq!(cpu.sr.get_overflow(), 0);
-        assert_eq!(cpu.sr.get_carry(), 1);
+        assert!(cpu.sr.n);
+        assert!(!cpu.sr.v);
+        assert!(cpu.sr.c);
     }
 
     #[test]
@@ -786,17 +799,17 @@ mod tests {
         cpu.step(3);
 
         assert_eq!(cpu.ac, 0xFF);
-        assert_eq!(cpu.sr.get_negative(), 1);
-        assert_eq!(cpu.sr.get_overflow(), 0);
+        assert!(cpu.sr.n);
+        assert!(!cpu.sr.v);
 
         let mut cpu = cpu_with_program(&[0x38, 0xA9, 0x30, 0x85, 0x10, 0xE5, 0x10]);
 
         cpu.step(4);
 
         assert_eq!(cpu.ac, 0x00);
-        assert_eq!(cpu.sr.get_overflow(), 0);
-        assert_eq!(cpu.sr.get_zero(), 1);
-        assert_eq!(cpu.sr.get_carry(), 1);
+        assert!(!cpu.sr.v);
+        assert!(cpu.sr.z);
+        assert!(cpu.sr.c);
     }
 
     #[test]
@@ -805,8 +818,8 @@ mod tests {
 
         cpu.step(3);
 
-        assert_eq!(cpu.sr.get_zero(), 1);
-        assert_eq!(cpu.sr.get_carry(), 1);
+        assert!(cpu.sr.z);
+        assert!(cpu.sr.c);
     }
 
     #[test]
@@ -816,6 +829,6 @@ mod tests {
         cpu.step(4);
 
         assert_eq!(cpu.ac, 0x10);
-        assert_eq!(cpu.bus.read_byte(0x0010), 0x10);
+        assert_eq!(cpu.bus.read_u8(0x0010), 0x10);
     }
 }

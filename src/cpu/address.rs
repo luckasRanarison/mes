@@ -7,9 +7,9 @@ pub enum Address {
 }
 
 impl Address {
-    pub fn memory_unchecked(&self) -> u16 {
+    pub fn to_memory_unchecked(self) -> u16 {
         match self {
-            Address::Memory(address) => *address,
+            Address::Memory(address) => address,
             Address::Register(_) => panic!(),
         }
     }
