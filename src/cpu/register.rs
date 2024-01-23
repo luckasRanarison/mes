@@ -1,5 +1,7 @@
+use crate::utils::Register;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Register {
+pub enum CpuRegister {
     PC,
     AC,
     X,
@@ -8,55 +10,60 @@ pub enum Register {
     SP,
 }
 
-#[derive(Debug, Default)]
-pub struct StatusRegister {
-    pub c: bool,
-    pub z: bool,
-    pub i: bool,
-    pub d: bool,
-    pub b: bool,
-    pub __: bool,
-    pub v: bool,
-    pub n: bool,
+#[derive(Debug)]
+pub enum StatusFlag {
+    C,
+    Z,
+    I,
+    D,
+    B,
+    __,
+    V,
+    N,
+}
+
+pub struct StatusRegister(Register);
+
+impl Default for StatusRegister {
+    fn default() -> Self {
+        Self(Register::new(0b0010_0000))
+    }
 }
 
 impl StatusRegister {
-    pub fn new() -> Self {
-        Self {
-            __: true,
-            ..Default::default()
-        }
+    pub fn value(&self) -> u8 {
+        self.0.value()
     }
 
-    pub fn update_z(&mut self, value: u8) {
-        self.z = value == 0;
+    pub fn get(&self, flag: StatusFlag) -> u8 {
+        self.0.get(flag as u8)
     }
 
-    pub fn update_n(&mut self, value: u8) {
-        self.n = value >> 7 == 1;
+    pub fn contains(&self, flag: StatusFlag) -> bool {
+        self.0.contains(flag as u8)
     }
 
-    pub fn as_u8(&self) -> u8 {
-        ((self.n as u8) << 7)
-            + ((self.v as u8) << 6)
-            + ((self.__ as u8) << 5)
-            + ((self.b as u8) << 4)
-            + ((self.d as u8) << 3)
-            + ((self.i as u8) << 2)
-            + ((self.z as u8) << 1)
-            + (self.c as u8)
+    pub fn assign(&mut self, value: u8) {
+        self.0.assign(value)
     }
 
-    pub fn from_u8(value: u8) -> Self {
-        Self {
-            c: value == 1,
-            z: value == 1 << 1,
-            i: value == 1 << 2,
-            d: value == 1 << 3,
-            b: value == 1 << 4,
-            __: value == 1 << 5,
-            v: value == 1 << 6,
-            n: value == 1 << 7,
-        }
+    pub fn update(&mut self, flag: StatusFlag, cond: bool) {
+        self.0.update(flag as u8, cond)
+    }
+
+    pub fn set(&mut self, flag: StatusFlag) {
+        self.update(flag, true)
+    }
+
+    pub fn clear(&mut self, flag: StatusFlag) {
+        self.update(flag, false)
+    }
+
+    pub fn update_zero(&mut self, value: u8) {
+        self.update(StatusFlag::Z, value == 0);
+    }
+
+    pub fn update_negative(&mut self, value: u8) {
+        self.update(StatusFlag::N, value >> 7 == 1);
     }
 }

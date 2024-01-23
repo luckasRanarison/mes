@@ -7,13 +7,15 @@ use opcodes::{Asm, OPCODE_MAP};
 
 use crate::{
     bus::Bus,
-    cpu::register::{Register, StatusRegister},
+    cpu::register::{CpuRegister, StatusRegister},
 };
 
 use std::{
     fmt,
     ops::{BitAnd, BitOr, BitXor},
 };
+
+use self::register::StatusFlag;
 
 const STACK_START: u16 = 0x100;
 const INITIAL_PC: u16 = 0xC000;
@@ -39,7 +41,7 @@ impl Cpu {
             ac: 0x00,
             x: 0x00,
             y: 0x00,
-            sr: StatusRegister::new(),
+            sr: StatusRegister::default(),
             sp: 0xFF,
             bus: Box::new(bus),
             cycle: 0,
@@ -61,10 +63,13 @@ impl Cpu {
     }
 
     pub fn execute(&mut self, opcode: u8) -> u8 {
-        let Some(opcode) = OPCODE_MAP.get(&opcode) else { panic!("Invalid opcode: {:x}", opcode) };
+        let Some(opcode) = OPCODE_MAP.get(&opcode) else {
+            panic!("Invalid opcode: {:x}", opcode)
+        };
         let adr_mode = opcode.adr_mode;
         let (address, crossed_boundary) = self.get_address(adr_mode);
-        let additional_cycle = opcode.get_additional_cycles(crossed_boundary);
+        let total_cycle = opcode.cycle + opcode.get_additional_cycles(crossed_boundary);
+        let prev_pc = self.pc;
 
         match opcode.asm {
             Asm::LDA => self.lda(address),
@@ -129,7 +134,11 @@ impl Cpu {
             self.increment_pc(opcode.len() - 1);
         }
 
-        opcode.cycle + additional_cycle
+        if opcode.is_branching() && (prev_pc != self.pc) {
+            total_cycle + 1 + crossed_boundary as u8
+        } else {
+            total_cycle
+        }
     }
 
     fn increment_pc(&mut self, value: u8) {
@@ -211,22 +220,22 @@ impl Cpu {
         }
     }
 
-    fn get_register(&self, register: Register) -> u8 {
+    fn get_register(&self, register: CpuRegister) -> u8 {
         match register {
-            Register::AC => self.ac,
-            Register::X => self.x,
-            Register::Y => self.y,
-            Register::SP => self.sp,
+            CpuRegister::AC => self.ac,
+            CpuRegister::X => self.x,
+            CpuRegister::Y => self.y,
+            CpuRegister::SP => self.sp,
             _ => unreachable!(),
         }
     }
 
-    fn get_register_mut(&mut self, register: Register) -> &mut u8 {
+    fn get_register_mut(&mut self, register: CpuRegister) -> &mut u8 {
         match register {
-            Register::AC => &mut self.ac,
-            Register::X => &mut self.x,
-            Register::Y => &mut self.y,
-            Register::SP => &mut self.sp,
+            CpuRegister::AC => &mut self.ac,
+            CpuRegister::X => &mut self.x,
+            CpuRegister::Y => &mut self.y,
+            CpuRegister::SP => &mut self.sp,
             _ => unreachable!(),
         }
     }
@@ -254,51 +263,51 @@ impl Cpu {
     }
 
     fn lda(&mut self, address: Address) {
-        self.load(address, Register::AC);
+        self.load(address, CpuRegister::AC);
     }
 
     fn ldx(&mut self, address: Address) {
-        self.load(address, Register::X);
+        self.load(address, CpuRegister::X);
     }
 
     fn ldy(&mut self, address: Address) {
-        self.load(address, Register::Y);
+        self.load(address, CpuRegister::Y);
     }
 
     fn sta(&mut self, address: Address) {
-        self.store(address, Register::AC);
+        self.store(address, CpuRegister::AC);
     }
 
     fn stx(&mut self, address: Address) {
-        self.store(address, Register::X);
+        self.store(address, CpuRegister::X);
     }
 
     fn sty(&mut self, address: Address) {
-        self.store(address, Register::Y);
+        self.store(address, CpuRegister::Y);
     }
 
     fn tax(&mut self) {
-        self.transfert(Register::AC, Register::X);
+        self.transfert(CpuRegister::AC, CpuRegister::X);
     }
 
     fn tay(&mut self) {
-        self.transfert(Register::AC, Register::Y);
+        self.transfert(CpuRegister::AC, CpuRegister::Y);
     }
 
     fn tsx(&mut self) {
-        self.transfert(Register::SP, Register::X);
+        self.transfert(CpuRegister::SP, CpuRegister::X);
     }
 
     fn txa(&mut self) {
-        self.transfert(Register::X, Register::AC);
+        self.transfert(CpuRegister::X, CpuRegister::AC);
     }
 
     fn txs(&mut self) {
-        self.transfert(Register::X, Register::SP);
+        self.transfert(CpuRegister::X, CpuRegister::SP);
     }
 
     fn tya(&mut self) {
-        self.transfert(Register::Y, Register::AC);
+        self.transfert(CpuRegister::Y, CpuRegister::AC);
     }
 
     fn pha(&mut self) {
@@ -306,20 +315,20 @@ impl Cpu {
     }
 
     fn php(&mut self) {
-        self.sr.b = true;
-        self.push_stack_u8(self.sr.as_u8());
+        self.sr.set(StatusFlag::B);
+        self.push_stack_u8(self.sr.value());
     }
 
     fn pla(&mut self) {
         let value = self.pull_stack_u8();
-        self.sr.update_n(value);
-        self.sr.update_z(value);
+        self.sr.update_negative(value);
+        self.sr.update_zero(value);
         self.ac = value;
     }
 
     fn plp(&mut self) {
-        let status = (self.pull_stack_u8() & 0b1110_1111) | ((self.sr.b as u8) << 4);
-        self.sr = StatusRegister::from_u8(status);
+        let status = (self.pull_stack_u8() & 0b1110_1111) | ((self.sr.get(StatusFlag::B)) << 4);
+        self.sr.assign(status);
     }
 
     fn dec(&mut self, address: Address) {
@@ -327,11 +336,11 @@ impl Cpu {
     }
 
     fn dex(&mut self) {
-        self.decrement(Address::Register(Register::X));
+        self.decrement(Address::Register(CpuRegister::X));
     }
 
     fn dey(&mut self) {
-        self.decrement(Address::Register(Register::Y));
+        self.decrement(Address::Register(CpuRegister::Y));
     }
 
     fn inc(&mut self, address: Address) {
@@ -339,11 +348,11 @@ impl Cpu {
     }
 
     fn inx(&mut self) {
-        self.increment(Address::Register(Register::X));
+        self.increment(Address::Register(CpuRegister::X));
     }
 
     fn iny(&mut self) {
-        self.increment(Address::Register(Register::Y));
+        self.increment(Address::Register(CpuRegister::Y));
     }
 
     fn adc(&mut self, address: Address) {
@@ -371,111 +380,111 @@ impl Cpu {
     fn asl(&mut self, address: Address) {
         let operand = self.read_address(address);
         let result = operand.wrapping_shl(1);
-        self.sr.c = operand >> 7 == 1;
-        self.sr.update_n(result);
-        self.sr.update_z(result);
+        self.sr.update(StatusFlag::C, operand >> 7 == 1);
+        self.sr.update_negative(result);
+        self.sr.update_zero(result);
         self.write_address(address, result);
     }
 
     fn lsr(&mut self, address: Address) {
         let operand = self.read_address(address);
         let result = operand.wrapping_shr(1);
-        self.sr.c = operand << 7 == 128;
-        self.sr.update_n(result);
-        self.sr.update_z(result);
+        self.sr.update(StatusFlag::C, operand << 7 == 128);
+        self.sr.update_negative(result);
+        self.sr.update_zero(result);
         self.write_address(address, result);
     }
 
     fn rol(&mut self, address: Address) {
         let operand = self.read_address(address);
-        let carry_bit = self.sr.c as u8;
+        let carry_bit = self.sr.get(StatusFlag::C);
         let result = operand.wrapping_shl(1) | carry_bit;
-        self.sr.c = operand >> 7 == 1;
-        self.sr.update_n(result);
-        self.sr.update_z(result);
+        self.sr.update(StatusFlag::C, operand >> 7 == 1);
+        self.sr.update_negative(result);
+        self.sr.update_zero(result);
         self.write_address(address, result);
     }
 
     fn ror(&mut self, address: Address) {
         let operand = self.read_address(address);
-        let carry_bit = self.sr.c as u8;
+        let carry_bit = self.sr.get(StatusFlag::C);
         let result = operand.wrapping_shr(1) | (carry_bit << 7);
-        self.sr.c = operand & 1 == 1;
-        self.sr.update_n(result);
-        self.sr.update_z(result);
+        self.sr.update(StatusFlag::C, operand & 1 == 1);
+        self.sr.update_negative(result);
+        self.sr.update_zero(result);
         self.write_address(address, result);
     }
 
     fn clc(&mut self) {
-        self.sr.c = false;
+        self.sr.clear(StatusFlag::C);
     }
 
     fn cld(&mut self) {
-        self.sr.d = false;
+        self.sr.clear(StatusFlag::D);
     }
 
     fn cli(&mut self) {
-        self.sr.i = false;
+        self.sr.clear(StatusFlag::I);
     }
 
     fn clv(&mut self) {
-        self.sr.v = false;
+        self.sr.clear(StatusFlag::V);
     }
 
     fn sec(&mut self) {
-        self.sr.c = true;
+        self.sr.set(StatusFlag::C);
     }
 
     fn sei(&mut self) {
-        self.sr.i = true;
+        self.sr.set(StatusFlag::I);
     }
 
     fn sed(&mut self) {
-        self.sr.d = true;
+        self.sr.set(StatusFlag::D);
     }
 
     fn cmp(&mut self, address: Address) {
-        self.compare(address, Register::AC);
+        self.compare(address, CpuRegister::AC);
     }
 
     fn cpx(&mut self, address: Address) {
-        self.compare(address, Register::X);
+        self.compare(address, CpuRegister::X);
     }
 
     fn cpy(&mut self, address: Address) {
-        self.compare(address, Register::Y);
+        self.compare(address, CpuRegister::Y);
     }
 
     fn bcc(&mut self, address: Address) {
-        self.branch(!self.sr.c, address);
+        self.branch(!self.sr.contains(StatusFlag::C), address);
     }
 
     fn bcs(&mut self, address: Address) {
-        self.branch(self.sr.c, address);
+        self.branch(self.sr.contains(StatusFlag::C), address);
     }
 
     fn beq(&mut self, address: Address) {
-        self.branch(self.sr.z, address);
+        self.branch(self.sr.contains(StatusFlag::Z), address);
     }
 
     fn bmi(&mut self, address: Address) {
-        self.branch(self.sr.n, address);
+        self.branch(self.sr.contains(StatusFlag::N), address);
     }
 
     fn bne(&mut self, address: Address) {
-        self.branch(!self.sr.z, address);
+        self.branch(!self.sr.contains(StatusFlag::Z), address);
     }
 
     fn bpl(&mut self, address: Address) {
-        self.branch(!self.sr.n, address);
+        self.branch(!self.sr.contains(StatusFlag::N), address);
     }
 
     fn bvc(&mut self, address: Address) {
-        self.branch(!self.sr.v, address);
+        self.branch(!self.sr.contains(StatusFlag::V), address);
     }
 
     fn bvs(&mut self, address: Address) {
-        self.branch(self.sr.v, address);
+        self.branch(self.sr.contains(StatusFlag::V), address);
     }
 
     fn jmp(&mut self, address: Address) {
@@ -492,10 +501,10 @@ impl Cpu {
     }
 
     fn brk(&mut self) {
-        self.sr.b = true;
-        self.sr.i = true;
+        self.sr.set(StatusFlag::B);
+        self.sr.set(StatusFlag::I);
         self.push_stack_u16(self.pc + 2);
-        self.push_stack_u8(self.sr.as_u8());
+        self.push_stack_u8(self.sr.value());
     }
 
     fn rti(&mut self) {
@@ -506,74 +515,75 @@ impl Cpu {
     fn bit(&mut self, address: Address) {
         let rhs = self.read_address(address);
         let result = self.ac & rhs;
-        self.sr.update_z(result);
-        self.sr.update_n(rhs);
-        self.sr.v = (rhs >> 6 & 1) == 1;
+        self.sr.update_zero(result);
+        self.sr.update_negative(rhs);
+        self.sr.update(StatusFlag::V, (rhs >> 6 & 1) == 1);
     }
 
     fn nop(&self) {}
 
-    fn load(&mut self, address: Address, register: Register) {
+    fn load(&mut self, address: Address, register: CpuRegister) {
         let value = self.read_address(address);
-        self.sr.update_n(value);
-        self.sr.update_z(value);
+        self.sr.update_negative(value);
+        self.sr.update_zero(value);
         *self.get_register_mut(register) = value;
     }
 
-    fn store(&mut self, address: Address, register: Register) {
+    fn store(&mut self, address: Address, register: CpuRegister) {
         let value = self.get_register(register);
         self.write_address(address, value);
     }
 
-    fn transfert(&mut self, src: Register, dst: Register) {
+    fn transfert(&mut self, src: CpuRegister, dst: CpuRegister) {
         let value = self.get_register(src);
-        self.sr.update_n(value);
-        self.sr.update_z(value);
+        self.sr.update_negative(value);
+        self.sr.update_zero(value);
         *self.get_register_mut(dst) = value;
     }
 
     fn decrement(&mut self, address: Address) {
         let result = self.read_address(address).wrapping_sub(1);
-        self.sr.update_n(result);
-        self.sr.update_z(result);
+        self.sr.update_negative(result);
+        self.sr.update_zero(result);
         self.write_address(address, result);
     }
 
     fn increment(&mut self, address: Address) {
         let result = self.read_address(address).wrapping_add(1);
-        self.sr.update_n(result);
-        self.sr.update_z(result);
+        self.sr.update_negative(result);
+        self.sr.update_zero(result);
         self.write_address(address, result);
     }
 
     fn add_to_accumulator(&mut self, value: u8) {
-        let carry = self.sr.c as u8;
+        let carry = self.sr.get(StatusFlag::C);
         let (sum, c1) = self.ac.overflowing_add(value);
         let (sum, c2) = sum.overflowing_add(carry);
         let signed_sum = (self.ac as i8 as i16) + (value as i8 as i16) + carry as i16;
-        self.sr.c = c1 || c2;
-        self.sr.v = !(-128..=127).contains(&signed_sum);
-        self.sr.update_n(sum);
-        self.sr.update_z(sum);
+        let overflow = !(-128..=127).contains(&signed_sum);
+        self.sr.update(StatusFlag::C, c1 || c2);
+        self.sr.update(StatusFlag::V, overflow);
+        self.sr.update_negative(sum);
+        self.sr.update_zero(sum);
         self.ac = sum;
     }
 
     fn binary_op(&mut self, address: Address, f: fn(u8, u8) -> u8) {
         let rhs = self.read_address(address);
         let result = f(self.ac, rhs);
-        self.sr.update_n(result);
-        self.sr.update_z(result);
+        self.sr.update_negative(result);
+        self.sr.update_zero(result);
         self.ac = result;
     }
 
-    fn compare(&mut self, address: Address, register: Register) {
+    fn compare(&mut self, address: Address, register: CpuRegister) {
         let lhs = self.get_register(register);
         let rhs = self.read_address(address);
         let (sum, c1) = lhs.overflowing_add(!rhs);
         let (sum, c2) = sum.overflowing_add(1);
-        self.sr.c = c1 || c2;
-        self.sr.update_n(sum);
-        self.sr.update_z(sum);
+        self.sr.update(StatusFlag::C, c1 || c2);
+        self.sr.update_negative(sum);
+        self.sr.update_zero(sum);
     }
 
     fn branch(&mut self, predicate: bool, address: Address) {
@@ -593,14 +603,14 @@ impl fmt::Debug for Cpu {
         writeln!(
             f,
             "  sr: {{ N: {}, V: {}, _: {}, B: {}, D: {}, I: {}, Z: {}, C: {} }}",
-            self.sr.n as u8,
-            self.sr.v as u8,
-            self.sr.__ as u8,
-            self.sr.b as u8,
-            self.sr.d as u8,
-            self.sr.i as u8,
-            self.sr.z as u8,
-            self.sr.c as u8
+            self.sr.get(StatusFlag::N),
+            self.sr.get(StatusFlag::V),
+            self.sr.get(StatusFlag::__),
+            self.sr.get(StatusFlag::B),
+            self.sr.get(StatusFlag::D),
+            self.sr.get(StatusFlag::I),
+            self.sr.get(StatusFlag::Z),
+            self.sr.get(StatusFlag::C)
         )?;
         writeln!(f, "  sp: 0x{:x}", self.sp)?;
         writeln!(f, "}}")
@@ -778,18 +788,18 @@ mod tests {
         cpu.step(3);
 
         assert_eq!(cpu.ac, 0xE0);
-        assert!(cpu.sr.n);
-        assert!(cpu.sr.v);
-        assert!(!cpu.sr.c);
+        assert!(cpu.sr.contains(StatusFlag::N));
+        assert!(cpu.sr.contains(StatusFlag::V));
+        assert!(!cpu.sr.contains(StatusFlag::C));
 
         let mut cpu = cpu_with_program(&[0xA9, 0xFF, 0x85, 0x10, 0x65, 0x10]);
 
         cpu.step(3);
 
         assert_eq!(cpu.ac, 0xFE);
-        assert!(cpu.sr.n);
-        assert!(!cpu.sr.v);
-        assert!(cpu.sr.c);
+        assert!(cpu.sr.contains(StatusFlag::N));
+        assert!(!cpu.sr.contains(StatusFlag::V));
+        assert!(cpu.sr.contains(StatusFlag::C));
     }
 
     #[test]
@@ -799,17 +809,17 @@ mod tests {
         cpu.step(3);
 
         assert_eq!(cpu.ac, 0xFF);
-        assert!(cpu.sr.n);
-        assert!(!cpu.sr.v);
+        assert!(cpu.sr.contains(StatusFlag::N));
+        assert!(!cpu.sr.contains(StatusFlag::V));
 
         let mut cpu = cpu_with_program(&[0x38, 0xA9, 0x30, 0x85, 0x10, 0xE5, 0x10]);
 
         cpu.step(4);
 
         assert_eq!(cpu.ac, 0x00);
-        assert!(!cpu.sr.v);
-        assert!(cpu.sr.z);
-        assert!(cpu.sr.c);
+        assert!(!cpu.sr.contains(StatusFlag::V));
+        assert!(cpu.sr.contains(StatusFlag::Z));
+        assert!(cpu.sr.contains(StatusFlag::C));
     }
 
     #[test]
@@ -818,8 +828,8 @@ mod tests {
 
         cpu.step(3);
 
-        assert!(cpu.sr.z);
-        assert!(cpu.sr.c);
+        assert!(cpu.sr.contains(StatusFlag::Z));
+        assert!(cpu.sr.contains(StatusFlag::C));
     }
 
     #[test]

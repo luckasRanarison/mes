@@ -1,4 +1,4 @@
-use super::{address::AddressMode as AdrMode, register::Register as Reg};
+use super::{address::AddressMode as AdrMode, register::CpuRegister as Reg};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
@@ -31,13 +31,19 @@ impl Opcode {
             AdrMode::AbsoluteX | AdrMode::AbsoluteY | AdrMode::IndirectY => {
                 (crossed_boundary && self.cycle < 6) as u8
             }
-            AdrMode::Relative => crossed_boundary as u8 + 1,
             _ => 0,
         }
     }
 
     pub fn advance_counter(&self) -> bool {
         !matches!(self.asm, Asm::JMP | Asm::JSR | Asm::RTS)
+    }
+
+    pub fn is_branching(&self) -> bool {
+        matches!(
+            self.asm,
+            Asm::BCC | Asm::BCS | Asm::BVC | Asm::BVS | Asm::BEQ | Asm::BMI | Asm::BNE | Asm::BPL
+        )
     }
 }
 

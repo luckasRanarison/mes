@@ -1,9 +1,9 @@
-use super::register::Register;
+use super::register::CpuRegister;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Address {
     Memory(u16),
-    Register(Register),
+    Register(CpuRegister),
 }
 
 impl Address {
@@ -17,7 +17,7 @@ impl Address {
 
 #[derive(Debug, Clone, Copy)]
 pub enum AddressMode {
-    Implied(Register),
+    Implied(CpuRegister),
     Immediate,
     Absolute,
     ZeroPage,
