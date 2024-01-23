@@ -209,18 +209,18 @@ impl Cpu {
     fn read_address(&self, address: Address) -> u8 {
         match address {
             Address::Memory(adr) => self.bus.read_u8(adr),
-            Address::Register(reg) => self.get_register(reg),
+            Address::Register(reg) => self.read_register(reg),
         }
     }
 
     fn write_address(&mut self, address: Address, value: u8) {
         match address {
             Address::Memory(adr) => self.bus.write_u8(adr, value),
-            Address::Register(reg) => *self.get_register_mut(reg) = value,
+            Address::Register(reg) => self.write_register(reg, value),
         }
     }
 
-    fn get_register(&self, register: CpuRegister) -> u8 {
+    fn read_register(&self, register: CpuRegister) -> u8 {
         match register {
             CpuRegister::AC => self.ac,
             CpuRegister::X => self.x,
@@ -230,14 +230,14 @@ impl Cpu {
         }
     }
 
-    fn get_register_mut(&mut self, register: CpuRegister) -> &mut u8 {
+    fn write_register(&mut self, register: CpuRegister, value: u8) {
         match register {
-            CpuRegister::AC => &mut self.ac,
-            CpuRegister::X => &mut self.x,
-            CpuRegister::Y => &mut self.y,
-            CpuRegister::SP => &mut self.sp,
+            CpuRegister::AC => self.ac = value,
+            CpuRegister::X => self.x = value,
+            CpuRegister::Y => self.y = value,
+            CpuRegister::SP => self.sp = value,
             _ => unreachable!(),
-        }
+        };
     }
 
     fn push_stack_u8(&mut self, value: u8) {
@@ -526,19 +526,19 @@ impl Cpu {
         let value = self.read_address(address);
         self.sr.update_negative(value);
         self.sr.update_zero(value);
-        *self.get_register_mut(register) = value;
+        self.write_register(register, value);
     }
 
     fn store(&mut self, address: Address, register: CpuRegister) {
-        let value = self.get_register(register);
+        let value = self.read_register(register);
         self.write_address(address, value);
     }
 
     fn transfert(&mut self, src: CpuRegister, dst: CpuRegister) {
-        let value = self.get_register(src);
+        let value = self.read_register(src);
         self.sr.update_negative(value);
         self.sr.update_zero(value);
-        *self.get_register_mut(dst) = value;
+        self.write_register(dst, value);
     }
 
     fn decrement(&mut self, address: Address) {
@@ -577,7 +577,7 @@ impl Cpu {
     }
 
     fn compare(&mut self, address: Address, register: CpuRegister) {
-        let lhs = self.get_register(register);
+        let lhs = self.read_register(register);
         let rhs = self.read_address(address);
         let (sum, c1) = lhs.overflowing_add(!rhs);
         let (sum, c2) = sum.overflowing_add(1);
