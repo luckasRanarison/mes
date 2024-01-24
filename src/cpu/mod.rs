@@ -8,6 +8,7 @@ use opcodes::{Asm, OPCODE_MAP};
 use crate::{
     bus::Bus,
     cpu::register::{CpuRegister, StatusRegister},
+    utils::BitFlag,
 };
 
 use std::{
@@ -75,7 +76,7 @@ impl Cpu {
         };
         let adr_mode = opcode.adr_mode;
         let (address, crossed_boundary) = self.get_address(adr_mode);
-        let total_cycle = opcode.cycle + opcode.get_additional_cycles(crossed_boundary);
+        let mut total_cycle = opcode.cycle + opcode.get_additional_cycles(crossed_boundary);
         let prev_pc = self.pc;
 
         match opcode.asm {
@@ -137,15 +138,15 @@ impl Cpu {
             Asm::NOP => self.nop(),
         }
 
+        if opcode.is_branching() && (prev_pc != self.pc) {
+            total_cycle += 1 + crossed_boundary as u8;
+        }
+
         if opcode.advance_counter() {
             self.increment_pc(opcode.len() - 1);
         }
 
-        if opcode.is_branching() && (prev_pc != self.pc) {
-            total_cycle + 1 + crossed_boundary as u8
-        } else {
-            total_cycle
-        }
+        total_cycle
     }
 
     fn increment_pc(&mut self, value: u8) {
@@ -192,16 +193,23 @@ impl Cpu {
                 (Address::Memory(address as u16), false)
             }
             AddressMode::Indirect => {
+                let lookup_adr = self.bus.read_u16(self.pc);
                 let address = self.bus.read_u16(self.bus.read_u16(self.pc));
+                println!("{:x}", lookup_adr);
                 (Address::Memory(address), false)
             }
             AddressMode::IndirectX => {
                 let lookup_adr = self.bus.read_u8(self.pc).wrapping_add(self.x);
-                let address = self.bus.read_u16(lookup_adr as u16);
+                let low = self.bus.read_u8(lookup_adr as u16);
+                let high = self.bus.read_u8(lookup_adr.wrapping_add(1) as u16);
+                let address = u16::from_le_bytes([low, high]);
                 (Address::Memory(address), false)
             }
             AddressMode::IndirectY => {
-                let address = self.bus.read_u16(self.bus.read_u8(self.pc) as u16);
+                let lookup_adr = self.bus.read_u8(self.pc);
+                let low = self.bus.read_u8(lookup_adr as u16);
+                let high = self.bus.read_u8(lookup_adr.wrapping_add(1) as u16);
+                let address = u16::from_le_bytes([low, high]);
                 let (address, crossed) = self.get_effective_address(address, self.y);
                 (Address::Memory(address), crossed)
             }
@@ -294,27 +302,27 @@ impl Cpu {
     }
 
     fn tax(&mut self) {
-        self.transfert(CpuRegister::AC, CpuRegister::X);
+        self.transfert(CpuRegister::AC, CpuRegister::X, true);
     }
 
     fn tay(&mut self) {
-        self.transfert(CpuRegister::AC, CpuRegister::Y);
+        self.transfert(CpuRegister::AC, CpuRegister::Y, true);
     }
 
     fn tsx(&mut self) {
-        self.transfert(CpuRegister::SP, CpuRegister::X);
+        self.transfert(CpuRegister::SP, CpuRegister::X, true);
     }
 
     fn txa(&mut self) {
-        self.transfert(CpuRegister::X, CpuRegister::AC);
+        self.transfert(CpuRegister::X, CpuRegister::AC, true);
     }
 
     fn txs(&mut self) {
-        self.transfert(CpuRegister::X, CpuRegister::SP);
+        self.transfert(CpuRegister::X, CpuRegister::SP, false);
     }
 
     fn tya(&mut self) {
-        self.transfert(CpuRegister::Y, CpuRegister::AC);
+        self.transfert(CpuRegister::Y, CpuRegister::AC, true);
     }
 
     fn pha(&mut self) {
@@ -322,8 +330,9 @@ impl Cpu {
     }
 
     fn php(&mut self) {
-        self.sr.set(StatusFlag::B);
-        self.push_stack_u8(self.sr.value());
+        let mut status = self.sr.value();
+        status.set(StatusFlag::B as u8);
+        self.push_stack_u8(status);
     }
 
     fn pla(&mut self) {
@@ -334,7 +343,9 @@ impl Cpu {
     }
 
     fn plp(&mut self) {
-        let status = (self.pull_stack_u8() & 0b1110_1111) | ((self.sr.get(StatusFlag::B)) << 4);
+        let status = (self.pull_stack_u8() & 0b1100_1111)
+            | ((self.sr.get(StatusFlag::B)) << 4)
+            | (self.sr.get(StatusFlag::__) << 5);
         self.sr.assign(status);
     }
 
@@ -541,10 +552,14 @@ impl Cpu {
         self.write_address(address, value);
     }
 
-    fn transfert(&mut self, src: CpuRegister, dst: CpuRegister) {
+    fn transfert(&mut self, src: CpuRegister, dst: CpuRegister, update_flags: bool) {
         let value = self.read_register(src);
-        self.sr.update_negative(value);
-        self.sr.update_zero(value);
+
+        if update_flags {
+            self.sr.update_negative(value);
+            self.sr.update_zero(value);
+        }
+
         self.write_register(dst, value);
     }
 
@@ -604,9 +619,9 @@ impl fmt::Debug for Cpu {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Cpu {{")?;
         writeln!(f, "  pc: 0x{:x}", self.pc)?;
-        writeln!(f, "  ac: {}", self.ac)?;
-        writeln!(f, "  x: {}", self.x)?;
-        writeln!(f, "  y: {}", self.y)?;
+        writeln!(f, "  ac: 0x{:x}", self.ac)?;
+        writeln!(f, "  x: 0x{:x}", self.x)?;
+        writeln!(f, "  y: 0x{:x}", self.y)?;
         writeln!(
             f,
             "  sr: {{ N: {}, V: {}, _: {}, B: {}, D: {}, I: {}, Z: {}, C: {} }}",
@@ -620,50 +635,52 @@ impl fmt::Debug for Cpu {
             self.sr.get(StatusFlag::C)
         )?;
         writeln!(f, "  sp: 0x{:x}", self.sp)?;
+        writeln!(f, "  cycle: {}", self.cycle)?;
         writeln!(f, "}}")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{bus::NesBus, cartridge::Cartridge, cpu::Cpu};
+    use crate::{
+        bus::NesBus,
+        cartridge::Cartridge,
+        cpu::{opcodes::OPCODE_MAP, Cpu},
+    };
     use std::fs;
 
     #[derive(Debug)]
     struct LogLine {
-        number: usize,
         pc: u16,
         opcode: u8,
         a: u8,
         x: u8,
         y: u8,
+        sr: u8,
         sp: u8,
         cycle: usize,
     }
 
-    fn parse_log_line(line: &str, number: usize) -> LogLine {
+    fn parse_log_line(line: &str) -> LogLine {
         let pc = u16::from_str_radix(&line[..4], 16).unwrap();
         let opcode = u8::from_str_radix(&line[6..8], 16).unwrap();
         let a = u8::from_str_radix(&line[50..52], 16).unwrap();
         let x = u8::from_str_radix(&line[55..57], 16).unwrap();
         let y = u8::from_str_radix(&line[60..62], 16).unwrap();
+        let sr = u8::from_str_radix(&line[65..67], 16).unwrap();
         let sp = u8::from_str_radix(&line[71..73], 16).unwrap();
         let cycle = line[90..].parse().unwrap();
 
         LogLine {
-            number,
             pc,
             opcode,
             a,
             x,
             y,
+            sr,
             sp,
             cycle,
         }
-    }
-
-    fn report(line: &LogLine, cpu: &Cpu) -> String {
-        format!("line {}\n{:?}\n{:?}", line.number, line, cpu)
     }
 
     #[test]
@@ -680,21 +697,37 @@ mod tests {
         assert_eq!(cpu.sp, 0xFD);
 
         cpu.pc = 0xC000;
+        cpu.sr.assign(0x24);
 
         for (i, line) in log.lines().enumerate() {
-            let parsed = parse_log_line(line, i);
+            let parsed = parse_log_line(line);
+            let opcode = cpu.bus.read_u8(cpu.pc);
 
-            // assert_eq!(parsed.cycle, cpu.cycle, "cycle: {}", report(&parsed, &cpu));
-            assert_eq!(parsed.pc, cpu.pc, "pc: {}", report(&parsed, &cpu));
-            assert_eq!(parsed.a, cpu.ac, "ac: {}", report(&parsed, &cpu));
-            assert_eq!(parsed.x, cpu.x, "x: {}", report(&parsed, &cpu));
-            assert_eq!(parsed.y, cpu.y, "y: {}", report(&parsed, &cpu));
-            assert_eq!(parsed.sp, cpu.sp, "sp: {}", report(&parsed, &cpu));
+            if OPCODE_MAP.get(&opcode).is_none() {
+                continue;
+            }
+
+            println!("--------- line {i} --------");
+            println!("{:?}", cpu);
+            println!("{:?}", OPCODE_MAP.get(&opcode).unwrap());
+
+            assert_eq!(parsed.opcode, opcode, "opcode");
+            assert_eq!(parsed.pc, cpu.pc, "pc",);
+            assert_eq!(parsed.a, cpu.ac, "ac");
+            assert_eq!(parsed.x, cpu.x, "x");
+            assert_eq!(parsed.y, cpu.y, "y");
+            assert_eq!(parsed.sp, cpu.sp, "sp");
+            assert_eq!(
+                parsed.sr,
+                cpu.sr.value(),
+                "sr: {:b}, {:b}",
+                parsed.sr,
+                cpu.sr.value()
+            );
+            assert_eq!(parsed.cycle, cpu.cycle, "cycle");
 
             let opcode = cpu.fetch();
             let cycles = cpu.execute(opcode);
-
-            assert_eq!(parsed.opcode, opcode, "opcode: {}", report(&parsed, &cpu));
 
             cpu.cycle += cycles as usize;
         }
