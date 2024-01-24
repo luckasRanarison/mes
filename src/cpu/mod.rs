@@ -18,7 +18,7 @@ use std::{
 use self::register::StatusFlag;
 
 const STACK_START: u16 = 0x100;
-const INITIAL_PC: u16 = 0xC000;
+const RESET_VECTOR: u16 = 0xFFFC;
 
 pub struct Cpu {
     pc: u16,
@@ -37,15 +37,22 @@ impl Cpu {
         B: Bus + 'static,
     {
         Self {
-            pc: INITIAL_PC,
+            pc: 0x00,
             ac: 0x00,
             x: 0x00,
             y: 0x00,
             sr: StatusRegister::default(),
-            sp: 0xFF,
+            sp: 0x00,
             bus: Box::new(bus),
             cycle: 0,
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.push_stack_u16(self.pc);
+        self.push_stack_u8(self.sr.value());
+        self.pc = self.bus.read_u16(RESET_VECTOR);
+        self.cycle += 7;
     }
 
     pub fn step(&mut self, steps: usize) {
@@ -619,226 +626,77 @@ impl fmt::Debug for Cpu {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    const INITIAL_PC: usize = 0xC000;
+    use crate::{bus::NesBus, cartridge::Cartridge, cpu::Cpu};
+    use std::fs;
 
     #[derive(Debug)]
-    struct BusMock {
-        ram: [u8; 0xFFFF],
+    struct LogLine {
+        number: usize,
+        pc: u16,
+        opcode: u8,
+        a: u8,
+        x: u8,
+        y: u8,
+        sp: u8,
+        cycle: usize,
     }
 
-    impl Default for BusMock {
-        fn default() -> Self {
-            Self { ram: [0; 0xFFFF] }
+    fn parse_log_line(line: &str, number: usize) -> LogLine {
+        let pc = u16::from_str_radix(&line[..4], 16).unwrap();
+        let opcode = u8::from_str_radix(&line[6..8], 16).unwrap();
+        let a = u8::from_str_radix(&line[50..52], 16).unwrap();
+        let x = u8::from_str_radix(&line[55..57], 16).unwrap();
+        let y = u8::from_str_radix(&line[60..62], 16).unwrap();
+        let sp = u8::from_str_radix(&line[71..73], 16).unwrap();
+        let cycle = line[90..].parse().unwrap();
+
+        LogLine {
+            number,
+            pc,
+            opcode,
+            a,
+            x,
+            y,
+            sp,
+            cycle,
         }
     }
 
-    impl Bus for BusMock {
-        fn read_u8(&self, address: u16) -> u8 {
-            self.ram[address as usize]
-        }
-
-        fn read_u16(&self, address: u16) -> u16 {
-            let low = self.ram[address as usize];
-            let high = self.ram[address as usize + 1];
-            u16::from_le_bytes([low, high])
-        }
-
-        fn write_u8(&mut self, address: u16, value: u8) {
-            self.ram[address as usize] = value;
-        }
-    }
-
-    fn cpu_with_program(program: &[u8]) -> Cpu {
-        let mut ram = [0; 0xFFFF];
-        let start = INITIAL_PC;
-        let end = INITIAL_PC + program.len();
-        ram[start..end].copy_from_slice(program);
-
-        Cpu::new(BusMock { ram })
+    fn report(line: &LogLine, cpu: &Cpu) -> String {
+        format!("line {}\n{:?}\n{:?}", line.number, line, cpu)
     }
 
     #[test]
-    fn test_stack() {
-        let mut cpu = Cpu::new(BusMock::default());
+    fn test_cpu_nestest() {
+        let log = fs::read_to_string("roms/nestest.log").unwrap();
+        let rom = fs::read("roms/nestest.nes").unwrap();
+        let cartridge = Cartridge::try_from_bytes(&rom).unwrap();
+        let bus = NesBus::new(cartridge).unwrap();
+        let mut cpu = Cpu::new(bus);
 
-        cpu.push_stack_u8(0x30);
+        cpu.reset();
 
-        assert_eq!(cpu.sp, 0xFE);
-        assert_eq!(cpu.bus.read_u8(0x1FF), 0x30);
-        assert_eq!(cpu.pull_stack_u8(), 0x30);
-        assert_eq!(cpu.sp, 0xFF);
-
-        cpu.push_stack_u16(0x4530);
-
+        assert_eq!(cpu.pc, 0xC004);
         assert_eq!(cpu.sp, 0xFD);
-        assert_eq!(cpu.pull_stack_u16(), 0x4530);
-        assert_eq!(cpu.sp, 0xFF);
-    }
 
-    #[test]
-    fn test_immediate_addressing() {
-        let mut cpu = cpu_with_program(&[0xA9, 0x30]);
+        cpu.pc = 0xC000;
 
-        cpu.step(1);
+        for (i, line) in log.lines().enumerate() {
+            let parsed = parse_log_line(line, i);
 
-        assert_eq!(cpu.ac, 0x30);
-    }
+            // assert_eq!(parsed.cycle, cpu.cycle, "cycle: {}", report(&parsed, &cpu));
+            assert_eq!(parsed.pc, cpu.pc, "pc: {}", report(&parsed, &cpu));
+            assert_eq!(parsed.a, cpu.ac, "ac: {}", report(&parsed, &cpu));
+            assert_eq!(parsed.x, cpu.x, "x: {}", report(&parsed, &cpu));
+            assert_eq!(parsed.y, cpu.y, "y: {}", report(&parsed, &cpu));
+            assert_eq!(parsed.sp, cpu.sp, "sp: {}", report(&parsed, &cpu));
 
-    #[test]
-    fn test_absolute_addressing() {
-        let mut cpu = cpu_with_program(&[0xA9, 0x5F, 0x8D, 0x45, 0x32]);
+            let opcode = cpu.fetch();
+            let cycles = cpu.execute(opcode);
 
-        cpu.step(2);
+            assert_eq!(parsed.opcode, opcode, "opcode: {}", report(&parsed, &cpu));
 
-        assert_eq!(cpu.bus.read_u8(0x3245), 0x5F);
-    }
-
-    #[test]
-    fn test_zero_page_addressing() {
-        let mut cpu = cpu_with_program(&[0xA9, 0x15, 0x85, 0x10]);
-
-        cpu.step(2);
-
-        assert_eq!(cpu.bus.read_u8(0x0010), 0x15);
-    }
-
-    #[test]
-    fn test_indexed_absolute_addressing() {
-        let mut cpu = cpu_with_program(&[0xA2, 0x50, 0x8E, 0x70, 0x20, 0xBD, 0x20, 0x20]);
-
-        cpu.step(3);
-
-        assert_eq!(cpu.ac, 0x50);
-        assert_eq!(cpu.cycle, 10);
-
-        let mut cpu = cpu_with_program(&[0xA2, 0x50, 0x8E, 0x10, 0x20, 0xBD, 0xC0, 0x1F]);
-
-        cpu.step(3);
-
-        assert_eq!(cpu.ac, 0x50);
-        assert_eq!(cpu.cycle, 11);
-    }
-
-    #[test]
-    fn test_indexed_zero_page_addressing() {
-        let mut cpu = cpu_with_program(&[0xA2, 0x20, 0x86, 0x40, 0xB5, 0x20]);
-
-        cpu.step(3);
-
-        assert_eq!(cpu.ac, 0x20);
-
-        let mut cpu = cpu_with_program(&[0xA9, 0x10, 0x85, 0x20, 0xA2, 0xFF, 0xB4, 0x21]);
-
-        cpu.step(4);
-
-        assert_eq!(cpu.y, 0x10);
-    }
-
-    #[test]
-    fn test_indirect_addressing() {
-        let mut cpu = cpu_with_program(&[
-            0xA9, 0xC4, 0x8D, 0x82, 0xFF, 0xA9, 0x80, 0x8D, 0x83, 0xFF, 0x6C, 0x82, 0xFF,
-        ]);
-
-        cpu.step(5);
-
-        assert_eq!(cpu.pc, 0x80C4);
-    }
-
-    #[test]
-    fn test_pre_index_indirect_addressing() {
-        let mut cpu = cpu_with_program(&[
-            0xA9, 0xA5, 0x8D, 0x23, 0x30, 0xA9, 0x23, 0x85, 0x75, 0xA9, 0x30, 0x85, 0x76, 0xA2,
-            0x05, 0xA1, 0x70,
-        ]);
-
-        cpu.step(8);
-
-        assert_eq!(cpu.ac, 0xA5);
-    }
-
-    #[test]
-    fn test_post_index_indirect_addressing() {
-        let mut cpu = cpu_with_program(&[
-            0xA9, 0x23, 0x8D, 0x53, 0x35, 0xA9, 0x43, 0x85, 0x70, 0xA9, 0x35, 0x85, 0x71, 0xA0,
-            0x10, 0xB1, 0x70,
-        ]);
-
-        cpu.step(8);
-
-        assert_eq!(cpu.ac, 0x23);
-        assert_eq!(cpu.cycle, 23);
-    }
-
-    #[test]
-    fn test_relative_addressing() {
-        let mut cpu = cpu_with_program(&[0xD0, 0x02, 0xA9, 0x05, 0xA9, 0x10]);
-
-        cpu.step(2);
-
-        assert_eq!(cpu.ac, 0x10);
-    }
-
-    #[test]
-    fn test_add_carry() {
-        let mut cpu = cpu_with_program(&[0xA9, 0x70, 0x85, 0x10, 0x65, 0x10]);
-
-        cpu.step(3);
-
-        assert_eq!(cpu.ac, 0xE0);
-        assert!(cpu.sr.contains(StatusFlag::N));
-        assert!(cpu.sr.contains(StatusFlag::V));
-        assert!(!cpu.sr.contains(StatusFlag::C));
-
-        let mut cpu = cpu_with_program(&[0xA9, 0xFF, 0x85, 0x10, 0x65, 0x10]);
-
-        cpu.step(3);
-
-        assert_eq!(cpu.ac, 0xFE);
-        assert!(cpu.sr.contains(StatusFlag::N));
-        assert!(!cpu.sr.contains(StatusFlag::V));
-        assert!(cpu.sr.contains(StatusFlag::C));
-    }
-
-    #[test]
-    fn test_sub_carry() {
-        let mut cpu = cpu_with_program(&[0xA9, 0x30, 0x85, 0x10, 0xE5, 0x10]);
-
-        cpu.step(3);
-
-        assert_eq!(cpu.ac, 0xFF);
-        assert!(cpu.sr.contains(StatusFlag::N));
-        assert!(!cpu.sr.contains(StatusFlag::V));
-
-        let mut cpu = cpu_with_program(&[0x38, 0xA9, 0x30, 0x85, 0x10, 0xE5, 0x10]);
-
-        cpu.step(4);
-
-        assert_eq!(cpu.ac, 0x00);
-        assert!(!cpu.sr.contains(StatusFlag::V));
-        assert!(cpu.sr.contains(StatusFlag::Z));
-        assert!(cpu.sr.contains(StatusFlag::C));
-    }
-
-    #[test]
-    fn test_comparaison() {
-        let mut cpu = cpu_with_program(&[0xA9, 0x30, 0x85, 0x10, 0xC5, 0x10]);
-
-        cpu.step(3);
-
-        assert!(cpu.sr.contains(StatusFlag::Z));
-        assert!(cpu.sr.contains(StatusFlag::C));
-    }
-
-    #[test]
-    fn test_subroutines() {
-        let mut cpu = cpu_with_program(&[0x20, 0x05, 0xC0, 0x85, 0x10, 0xA9, 0x10, 0x60]);
-
-        cpu.step(4);
-
-        assert_eq!(cpu.ac, 0x10);
-        assert_eq!(cpu.bus.read_u8(0x0010), 0x10);
+            cpu.cycle += cycles as usize;
+        }
     }
 }
