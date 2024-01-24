@@ -1,4 +1,4 @@
-use crate::utils::Register;
+use crate::utils::BitFlag;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CpuRegister {
@@ -22,17 +22,17 @@ pub enum StatusFlag {
     N,
 }
 
-pub struct StatusRegister(Register);
+pub struct StatusRegister(u8);
 
 impl Default for StatusRegister {
     fn default() -> Self {
-        Self(Register::new(0b0010_0000))
+        Self(0b0010_0000)
     }
 }
 
 impl StatusRegister {
     pub fn value(&self) -> u8 {
-        self.0.value()
+        self.0
     }
 
     pub fn get(&self, flag: StatusFlag) -> u8 {
@@ -44,7 +44,7 @@ impl StatusRegister {
     }
 
     pub fn assign(&mut self, value: u8) {
-        self.0.assign(value)
+        self.0 = value
     }
 
     pub fn update(&mut self, flag: StatusFlag, cond: bool) {

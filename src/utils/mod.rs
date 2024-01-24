@@ -1,38 +1,29 @@
-#[derive(Default)]
-pub struct Register {
-    value: u8,
+pub trait BitFlag<T> {
+    fn get(&self, flag: T) -> T;
+    fn contains(&self, flag: T) -> bool;
+    fn set(&mut self, flag: T);
+    fn clear(&mut self, flag: T);
+    fn update(&mut self, flag: T, cond: bool);
 }
 
-impl Register {
-    pub fn new(value: u8) -> Self {
-        Self { value }
+impl BitFlag<u8> for u8 {
+    fn get(&self, flag: u8) -> u8 {
+        self >> flag & 1
     }
 
-    pub fn value(&self) -> u8 {
-        self.value
-    }
-
-    pub fn get(&self, flag: u8) -> u8 {
-        (self.value >> flag) & 1
-    }
-
-    pub fn contains(&self, flag: u8) -> bool {
+    fn contains(&self, flag: u8) -> bool {
         self.get(flag) == 1
     }
 
-    pub fn assign(&mut self, value: u8) {
-        self.value = value;
+    fn set(&mut self, flag: u8) {
+        *self |= 1 << flag;
     }
 
-    pub fn set(&mut self, flag: u8) {
-        self.value |= 1 << flag;
+    fn clear(&mut self, flag: u8) {
+        *self &= !(1 << flag);
     }
 
-    pub fn clear(&mut self, flag: u8) {
-        self.value &= !(1 << flag);
-    }
-
-    pub fn update(&mut self, flag: u8, cond: bool) {
+    fn update(&mut self, flag: u8, cond: bool) {
         if cond {
             self.set(flag);
         } else {
@@ -43,15 +34,15 @@ impl Register {
 
 #[cfg(test)]
 mod tests {
-    use super::Register;
+    use super::BitFlag;
 
     #[test]
     fn test_register() {
-        let mut reg = Register::new(0b1001_0000);
+        let mut bitflag = 0b1001_0000;
 
-        reg.set(5);
-        reg.clear(4);
+        bitflag.set(5);
+        bitflag.clear(4);
 
-        assert_eq!(reg.value, 0b1010_0000);
+        assert_eq!(bitflag, 0b1010_0000);
     }
 }
