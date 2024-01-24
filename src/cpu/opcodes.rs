@@ -28,15 +28,13 @@ impl Opcode {
 
     pub fn get_additional_cycles(&self, crossed_boundary: bool) -> u8 {
         match self.adr_mode {
-            AdrMode::AbsoluteX | AdrMode::AbsoluteY | AdrMode::IndirectY => {
+            AdrMode::AbsoluteX | AdrMode::AbsoluteY | AdrMode::IndirectY
+                if self.asm != Asm::STA =>
+            {
                 (crossed_boundary && self.cycle < 6) as u8
             }
             _ => 0,
         }
-    }
-
-    pub fn advance_counter(&self) -> bool {
-        !matches!(self.asm, Asm::JMP | Asm::JSR | Asm::RTS)
     }
 
     pub fn is_branching(&self) -> bool {
@@ -106,6 +104,15 @@ pub enum Asm {
     RTI,
     BIT,
     NOP,
+    // illegal opcodes
+    LAX,
+    SAX,
+    DCP,
+    ISB,
+    SLO,
+    RLA,
+    SRE,
+    RRA,
 }
 
 lazy_static! {
@@ -261,5 +268,85 @@ lazy_static! {
         (0x24, Opcode::new(Asm::BIT, AdrMode::ZeroPage, 3)),
         (0x2C, Opcode::new(Asm::BIT, AdrMode::Absolute, 4)),
         (0xEA, Opcode::new(Asm::NOP, AdrMode::Implied(Reg::PC), 2)),
+        (0x1A, Opcode::new(Asm::NOP, AdrMode::Implied(Reg::PC), 2)),
+        (0x3A, Opcode::new(Asm::NOP, AdrMode::Implied(Reg::PC), 2)),
+        (0x5A, Opcode::new(Asm::NOP, AdrMode::Implied(Reg::PC), 2)),
+        (0x7A, Opcode::new(Asm::NOP, AdrMode::Implied(Reg::PC), 2)),
+        (0xDA, Opcode::new(Asm::NOP, AdrMode::Implied(Reg::PC), 2)),
+        (0xFA, Opcode::new(Asm::NOP, AdrMode::Implied(Reg::PC), 2)),
+        (0x80, Opcode::new(Asm::NOP, AdrMode::Immediate, 2)),
+        (0x82, Opcode::new(Asm::NOP, AdrMode::Immediate, 2)),
+        (0x89, Opcode::new(Asm::NOP, AdrMode::Immediate, 2)),
+        (0xC2, Opcode::new(Asm::NOP, AdrMode::Immediate, 2)),
+        (0xE2, Opcode::new(Asm::NOP, AdrMode::Immediate, 2)),
+        (0x04, Opcode::new(Asm::NOP, AdrMode::ZeroPage, 3)),
+        (0x44, Opcode::new(Asm::NOP, AdrMode::ZeroPage, 3)),
+        (0x64, Opcode::new(Asm::NOP, AdrMode::ZeroPage, 3)),
+        (0x14, Opcode::new(Asm::NOP, AdrMode::ZeroPageX, 4)),
+        (0x34, Opcode::new(Asm::NOP, AdrMode::ZeroPageX, 4)),
+        (0x54, Opcode::new(Asm::NOP, AdrMode::ZeroPageX, 4)),
+        (0x74, Opcode::new(Asm::NOP, AdrMode::ZeroPageX, 4)),
+        (0xD4, Opcode::new(Asm::NOP, AdrMode::ZeroPageX, 4)),
+        (0xF4, Opcode::new(Asm::NOP, AdrMode::ZeroPageX, 4)),
+        (0x0C, Opcode::new(Asm::NOP, AdrMode::Absolute, 4)),
+        (0x1C, Opcode::new(Asm::NOP, AdrMode::AbsoluteX, 4)),
+        (0x3C, Opcode::new(Asm::NOP, AdrMode::AbsoluteX, 4)),
+        (0x5C, Opcode::new(Asm::NOP, AdrMode::AbsoluteX, 4)),
+        (0x7C, Opcode::new(Asm::NOP, AdrMode::AbsoluteX, 4)),
+        (0xDC, Opcode::new(Asm::NOP, AdrMode::AbsoluteX, 4)),
+        (0xFC, Opcode::new(Asm::NOP, AdrMode::AbsoluteX, 4)),
+        (0xA7, Opcode::new(Asm::LAX, AdrMode::ZeroPage, 3)),
+        (0xB7, Opcode::new(Asm::LAX, AdrMode::ZeroPageY, 4)),
+        (0xAF, Opcode::new(Asm::LAX, AdrMode::Absolute, 4)),
+        (0xBF, Opcode::new(Asm::LAX, AdrMode::AbsoluteY, 4)),
+        (0xA3, Opcode::new(Asm::LAX, AdrMode::IndirectX, 6)),
+        (0xB3, Opcode::new(Asm::LAX, AdrMode::IndirectY, 5)),
+        (0x87, Opcode::new(Asm::SAX, AdrMode::ZeroPage, 3)),
+        (0x97, Opcode::new(Asm::SAX, AdrMode::ZeroPageY, 4)),
+        (0x8F, Opcode::new(Asm::SAX, AdrMode::Absolute, 4)),
+        (0x83, Opcode::new(Asm::SAX, AdrMode::IndirectX, 6)),
+        (0xEB, Opcode::new(Asm::SBC, AdrMode::Immediate, 2)),
+        (0xC7, Opcode::new(Asm::DCP, AdrMode::ZeroPage, 5)),
+        (0xD7, Opcode::new(Asm::DCP, AdrMode::ZeroPageX, 6)),
+        (0xCF, Opcode::new(Asm::DCP, AdrMode::Absolute, 6)),
+        (0xDF, Opcode::new(Asm::DCP, AdrMode::AbsoluteX, 7)),
+        (0xDB, Opcode::new(Asm::DCP, AdrMode::AbsoluteY, 7)),
+        (0xC3, Opcode::new(Asm::DCP, AdrMode::IndirectX, 8)),
+        (0xD3, Opcode::new(Asm::DCP, AdrMode::IndirectY, 8)),
+        (0xE7, Opcode::new(Asm::ISB, AdrMode::ZeroPage, 5)),
+        (0xF7, Opcode::new(Asm::ISB, AdrMode::ZeroPageX, 6)),
+        (0xEF, Opcode::new(Asm::ISB, AdrMode::Absolute, 6)),
+        (0xFF, Opcode::new(Asm::ISB, AdrMode::AbsoluteX, 7)),
+        (0xFB, Opcode::new(Asm::ISB, AdrMode::AbsoluteY, 7)),
+        (0xE3, Opcode::new(Asm::ISB, AdrMode::IndirectX, 8)),
+        (0xF3, Opcode::new(Asm::ISB, AdrMode::IndirectY, 8)),
+        (0x07, Opcode::new(Asm::SLO, AdrMode::ZeroPage, 5)),
+        (0x17, Opcode::new(Asm::SLO, AdrMode::ZeroPageX, 6)),
+        (0x0F, Opcode::new(Asm::SLO, AdrMode::Absolute, 6)),
+        (0x1F, Opcode::new(Asm::SLO, AdrMode::AbsoluteX, 7)),
+        (0x1B, Opcode::new(Asm::SLO, AdrMode::AbsoluteY, 7)),
+        (0x03, Opcode::new(Asm::SLO, AdrMode::IndirectX, 8)),
+        (0x13, Opcode::new(Asm::SLO, AdrMode::IndirectY, 8)),
+        (0x27, Opcode::new(Asm::RLA, AdrMode::ZeroPage, 5)),
+        (0x37, Opcode::new(Asm::RLA, AdrMode::ZeroPageX, 6)),
+        (0x2F, Opcode::new(Asm::RLA, AdrMode::Absolute, 6)),
+        (0x3F, Opcode::new(Asm::RLA, AdrMode::AbsoluteX, 7)),
+        (0x3B, Opcode::new(Asm::RLA, AdrMode::AbsoluteY, 7)),
+        (0x23, Opcode::new(Asm::RLA, AdrMode::IndirectX, 8)),
+        (0x33, Opcode::new(Asm::RLA, AdrMode::IndirectY, 8)),
+        (0x47, Opcode::new(Asm::SRE, AdrMode::ZeroPage, 5)),
+        (0x57, Opcode::new(Asm::SRE, AdrMode::ZeroPageX, 6)),
+        (0x4F, Opcode::new(Asm::SRE, AdrMode::Absolute, 6)),
+        (0x5F, Opcode::new(Asm::SRE, AdrMode::AbsoluteX, 7)),
+        (0x5B, Opcode::new(Asm::SRE, AdrMode::AbsoluteY, 7)),
+        (0x43, Opcode::new(Asm::SRE, AdrMode::IndirectX, 8)),
+        (0x53, Opcode::new(Asm::SRE, AdrMode::IndirectY, 8)),
+        (0x67, Opcode::new(Asm::RRA, AdrMode::ZeroPage, 5)),
+        (0x77, Opcode::new(Asm::RRA, AdrMode::ZeroPageX, 6)),
+        (0x6F, Opcode::new(Asm::RRA, AdrMode::Absolute, 6)),
+        (0x7F, Opcode::new(Asm::RRA, AdrMode::AbsoluteX, 7)),
+        (0x7B, Opcode::new(Asm::RRA, AdrMode::AbsoluteY, 7)),
+        (0x63, Opcode::new(Asm::RRA, AdrMode::IndirectX, 8)),
+        (0x73, Opcode::new(Asm::RRA, AdrMode::IndirectY, 8)),
     ]);
 }

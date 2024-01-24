@@ -52,8 +52,9 @@ impl Bus for NesBus {
     fn write_u8(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x1FFF => self.write_ram(address, value),
+            0x2000..=0x401F => {}
+            0x4020..=0x5FFF => {}
             0x6000..=0xFFFF => self.mapper.borrow_mut().write(address, value),
-            _ => panic!("Trying to write to a read-only address: 0x{:x}", address),
         }
     }
 }

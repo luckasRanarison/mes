@@ -136,13 +136,23 @@ impl Cpu {
             Asm::RTI => self.rti(),
             Asm::BIT => self.bit(address),
             Asm::NOP => self.nop(),
+            Asm::LAX => self.lax(address),
+            Asm::SAX => self.sax(address),
+            Asm::DCP => self.dcp(address),
+            Asm::ISB => self.isb(address),
+            Asm::SLO => self.slo(address),
+            Asm::RLA => self.rla(address),
+            Asm::SRE => self.sre(address),
+            Asm::RRA => self.rra(address),
         }
 
-        if opcode.is_branching() && (prev_pc != self.pc) {
+        let has_jumped = prev_pc != self.pc;
+
+        if opcode.is_branching() && has_jumped {
             total_cycle += 1 + crossed_boundary as u8;
         }
 
-        if opcode.advance_counter() {
+        if !has_jumped {
             self.increment_pc(opcode.len() - 1);
         }
 
@@ -194,8 +204,13 @@ impl Cpu {
             }
             AddressMode::Indirect => {
                 let lookup_adr = self.bus.read_u16(self.pc);
-                let address = self.bus.read_u16(self.bus.read_u16(self.pc));
-                println!("{:x}", lookup_adr);
+                let address = match lookup_adr & 0xFF == 0xFF {
+                    true => u16::from_le_bytes([
+                        self.bus.read_u8(lookup_adr),
+                        self.bus.read_u8(lookup_adr & 0xFF00),
+                    ]),
+                    false => self.bus.read_u16(lookup_adr),
+                };
                 (Address::Memory(address), false)
             }
             AddressMode::IndirectX => {
@@ -215,7 +230,9 @@ impl Cpu {
             }
             AddressMode::Relative => {
                 let offset = self.bus.read_u8(self.pc);
-                let (address, crossed) = self.get_effective_address(self.pc, offset);
+                let pc = self.pc.wrapping_add(1); // page boundary is relative to the next instruction start
+                let address = pc.wrapping_add_signed(offset as i8 as i16);
+                let crossed = pc & 0xFF00 != address & 0xFF00;
                 (Address::Memory(address), crossed)
             }
         }
@@ -540,6 +557,46 @@ impl Cpu {
 
     fn nop(&self) {}
 
+    fn lax(&mut self, address: Address) {
+        self.lda(address);
+        self.ldx(address);
+    }
+
+    fn sax(&mut self, address: Address) {
+        let result = self.ac & self.x;
+        self.write_address(address, result);
+    }
+
+    fn dcp(&mut self, address: Address) {
+        self.dec(address);
+        self.cmp(address);
+    }
+
+    fn isb(&mut self, address: Address) {
+        self.inc(address);
+        self.sbc(address);
+    }
+
+    fn slo(&mut self, address: Address) {
+        self.asl(address);
+        self.ora(address);
+    }
+
+    fn rla(&mut self, address: Address) {
+        self.rol(address);
+        self.and(address);
+    }
+
+    fn sre(&mut self, address: Address) {
+        self.lsr(address);
+        self.eor(address);
+    }
+
+    fn rra(&mut self, address: Address) {
+        self.ror(address);
+        self.adc(address);
+    }
+
     fn load(&mut self, address: Address, register: CpuRegister) {
         let value = self.read_address(address);
         self.sr.update_negative(value);
@@ -618,13 +675,13 @@ impl Cpu {
 impl fmt::Debug for Cpu {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Cpu {{")?;
-        writeln!(f, "  pc: 0x{:x}", self.pc)?;
-        writeln!(f, "  ac: 0x{:x}", self.ac)?;
-        writeln!(f, "  x: 0x{:x}", self.x)?;
-        writeln!(f, "  y: 0x{:x}", self.y)?;
+        writeln!(f, "  pc: 0x{:x},", self.pc)?;
+        writeln!(f, "  ac: 0x{:x},", self.ac)?;
+        writeln!(f, "  x: 0x{:x},", self.x)?;
+        writeln!(f, "  y: 0x{:x},", self.y)?;
         writeln!(
             f,
-            "  sr: {{ N: {}, V: {}, _: {}, B: {}, D: {}, I: {}, Z: {}, C: {} }}",
+            "  sr: {{ N: {}, V: {}, _: {}, B: {}, D: {}, I: {}, Z: {}, C: {} }},",
             self.sr.get(StatusFlag::N),
             self.sr.get(StatusFlag::V),
             self.sr.get(StatusFlag::__),
@@ -634,7 +691,7 @@ impl fmt::Debug for Cpu {
             self.sr.get(StatusFlag::Z),
             self.sr.get(StatusFlag::C)
         )?;
-        writeln!(f, "  sp: 0x{:x}", self.sp)?;
+        writeln!(f, "  sp: 0x{:x},", self.sp)?;
         writeln!(f, "  cycle: {}", self.cycle)?;
         writeln!(f, "}}")
     }
@@ -642,11 +699,7 @@ impl fmt::Debug for Cpu {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        bus::NesBus,
-        cartridge::Cartridge,
-        cpu::{opcodes::OPCODE_MAP, Cpu},
-    };
+    use crate::{bus::NesBus, cartridge::Cartridge, cpu::Cpu};
     use std::fs;
 
     #[derive(Debug)]
@@ -699,32 +752,18 @@ mod tests {
         cpu.pc = 0xC000;
         cpu.sr.assign(0x24);
 
-        for (i, line) in log.lines().enumerate() {
+        for line in log.lines() {
             let parsed = parse_log_line(line);
             let opcode = cpu.bus.read_u8(cpu.pc);
 
-            if OPCODE_MAP.get(&opcode).is_none() {
-                continue;
-            }
-
-            println!("--------- line {i} --------");
-            println!("{:?}", cpu);
-            println!("{:?}", OPCODE_MAP.get(&opcode).unwrap());
-
-            assert_eq!(parsed.opcode, opcode, "opcode");
-            assert_eq!(parsed.pc, cpu.pc, "pc",);
-            assert_eq!(parsed.a, cpu.ac, "ac");
-            assert_eq!(parsed.x, cpu.x, "x");
-            assert_eq!(parsed.y, cpu.y, "y");
-            assert_eq!(parsed.sp, cpu.sp, "sp");
-            assert_eq!(
-                parsed.sr,
-                cpu.sr.value(),
-                "sr: {:b}, {:b}",
-                parsed.sr,
-                cpu.sr.value()
-            );
-            assert_eq!(parsed.cycle, cpu.cycle, "cycle");
+            assert_eq!(parsed.opcode, opcode);
+            assert_eq!(parsed.pc, cpu.pc);
+            assert_eq!(parsed.a, cpu.ac);
+            assert_eq!(parsed.x, cpu.x);
+            assert_eq!(parsed.y, cpu.y);
+            assert_eq!(parsed.sp, cpu.sp);
+            assert_eq!(parsed.sr, cpu.sr.value());
+            assert_eq!(parsed.cycle, cpu.cycle);
 
             let opcode = cpu.fetch();
             let cycles = cpu.execute(opcode);
