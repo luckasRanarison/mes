@@ -1,6 +1,7 @@
 use crate::{
     cartridge::{error::LoadError, Cartridge},
     mappers::{get_mapper, MapperRef},
+    ppu::Ppu,
 };
 use std::fmt::Debug;
 
@@ -13,15 +14,17 @@ pub trait Bus: Debug {
 #[derive(Debug)]
 pub struct NesBus {
     ram: [u8; 2048],
+    ppu: Ppu,
     mapper: MapperRef,
 }
 
 impl NesBus {
     pub fn new(cartridge: Cartridge) -> Result<Self, LoadError> {
         let mapper = get_mapper(cartridge).ok_or(LoadError::UnsupportedMapper)?;
+        let ppu = Ppu::new(mapper.clone());
         let ram = [0; 2048];
 
-        Ok(NesBus { mapper, ram })
+        Ok(NesBus { ram, ppu, mapper })
     }
 
     fn read_ram(&self, address: u16) -> u8 {

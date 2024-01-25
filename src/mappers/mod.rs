@@ -5,7 +5,7 @@ use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
 pub type MapperRef = Rc<RefCell<dyn Mapper>>;
 
-fn new_mapper_ref<M>(mapper: M) -> MapperRef
+fn create_ref<M>(mapper: M) -> MapperRef
 where
     M: Mapper + 'static,
 {
@@ -19,7 +19,7 @@ pub trait Mapper: Debug {
 
 pub fn get_mapper(cartridge: Cartridge) -> Option<MapperRef> {
     match cartridge.header.mapper {
-        0 => Some(new_mapper_ref(Nrom::new(cartridge))),
+        0 => Some(create_ref(Nrom::new(cartridge))),
         _ => None,
     }
 }
