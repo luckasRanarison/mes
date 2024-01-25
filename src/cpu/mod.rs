@@ -7,7 +7,7 @@ use opcodes::{Asm, OPCODE_MAP};
 
 use crate::{
     bus::Bus,
-    cpu::register::{CpuRegister, StatusRegister},
+    cpu::register::{CpuRegister, StatusFlag, StatusRegister},
     utils::BitFlag,
 };
 
@@ -15,8 +15,6 @@ use std::{
     fmt,
     ops::{BitAnd, BitOr, BitXor},
 };
-
-use self::register::StatusFlag;
 
 const STACK_START: u16 = 0x100;
 const RESET_VECTOR: u16 = 0xFFFC;
@@ -50,10 +48,16 @@ impl Cpu {
     }
 
     pub fn reset(&mut self) {
+        self.pc = 0x00;
+        self.ac = 0x00;
+        self.x = 0x00;
+        self.y = 0x00;
+        self.sr = StatusRegister::default();
+        self.sp = 0x00;
         self.push_stack_u16(self.pc);
         self.push_stack_u8(self.sr.value());
         self.pc = self.bus.read_u16(RESET_VECTOR);
-        self.cycle += 7;
+        self.cycle = 7;
     }
 
     pub fn step(&mut self, steps: usize) {
@@ -136,14 +140,18 @@ impl Cpu {
             Asm::RTI => self.rti(),
             Asm::BIT => self.bit(address),
             Asm::NOP => self.nop(),
-            Asm::LAX => self.lax(address),
-            Asm::SAX => self.sax(address),
+            Asm::ALR => self.alr(address),
+            Asm::ANC => self.anc(address),
             Asm::DCP => self.dcp(address),
             Asm::ISB => self.isb(address),
-            Asm::SLO => self.slo(address),
+            Asm::LAS => self.las(address),
+            Asm::LAX => self.lax(address),
             Asm::RLA => self.rla(address),
-            Asm::SRE => self.sre(address),
             Asm::RRA => self.rra(address),
+            Asm::SAX => self.sax(address),
+            Asm::SBX => self.sbx(address),
+            Asm::SLO => self.slo(address),
+            Asm::SRE => self.sre(address),
         }
 
         let has_jumped = prev_pc != self.pc;
@@ -557,6 +565,21 @@ impl Cpu {
 
     fn nop(&self) {}
 
+    fn alr(&mut self, address: Address) {
+        self.and(address);
+        self.lsr(address);
+    }
+
+    fn anc(&mut self, address: Address) {
+        self.and(address);
+        self.sr.update(StatusFlag::C, self.ac.contains(7));
+    }
+
+    fn las(&mut self, address: Address) {
+        self.lda(address);
+        self.tsx();
+    }
+
     fn lax(&mut self, address: Address) {
         self.lda(address);
         self.ldx(address);
@@ -565,6 +588,17 @@ impl Cpu {
     fn sax(&mut self, address: Address) {
         let result = self.ac & self.x;
         self.write_address(address, result);
+    }
+
+    fn sbx(&mut self, address: Address) {
+        let lhs = self.ac & self.x;
+        let rhs = self.read_address(address);
+        let (sum, c1) = lhs.overflowing_add(!rhs);
+        let (sum, c2) = sum.overflowing_add(1);
+        self.sr.update(StatusFlag::C, c1 || c2);
+        self.sr.update_negative(sum);
+        self.sr.update_zero(sum);
+        self.x = sum;
     }
 
     fn dcp(&mut self, address: Address) {
@@ -647,7 +681,10 @@ impl Cpu {
         self.ac = sum;
     }
 
-    fn binary_op(&mut self, address: Address, f: fn(u8, u8) -> u8) {
+    fn binary_op<F>(&mut self, address: Address, f: F)
+    where
+        F: Fn(u8, u8) -> u8,
+    {
         let rhs = self.read_address(address);
         let result = f(self.ac, rhs);
         self.sr.update_negative(result);
