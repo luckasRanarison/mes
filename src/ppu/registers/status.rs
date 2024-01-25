@@ -15,6 +15,10 @@ pub enum StatusFlag {
 pub struct StatusRegister(u8);
 
 impl StatusRegister {
+    pub fn read(&self) -> u8 {
+        self.0
+    }
+
     pub fn get_sprite_overflow(&self) -> bool {
         self.contains(StatusFlag::O)
     }

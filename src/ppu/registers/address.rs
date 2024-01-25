@@ -20,8 +20,8 @@ impl AddressRegiser {
         *latch = !*latch;
     }
 
-    pub fn increment(&mut self, value: u16) {
-        let result = self.get().wrapping_add(value);
+    pub fn increment(&mut self, value: u8) {
+        let result = self.get().wrapping_add(value as u16);
         self.set(result & 0x3FFF);
     }
 

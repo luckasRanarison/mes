@@ -13,7 +13,11 @@ where
 }
 
 pub trait Mapper: Debug {
-    fn read(&self, address: u16) -> u8;
+    fn read_prg(&self, address: u16) -> u8;
+    fn read_chr(&self, address: u16) -> u8;
+    fn read_expansion(&self, address: u16) -> u8 {
+        panic!("Trying to read from unused expansion ROM: 0x{:x}", address);
+    }
     fn write(&mut self, address: u16, value: u8);
 }
 

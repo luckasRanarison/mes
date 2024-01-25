@@ -8,4 +8,4 @@ pub use address::AddressRegiser;
 pub use control::ControlRegister;
 pub use mask::MaskRegister;
 pub use scroll::ScrollRegister;
-pub use status::StatusRegister;
+pub use status::{StatusFlag, StatusRegister};

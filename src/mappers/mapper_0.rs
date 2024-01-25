@@ -13,7 +13,7 @@ impl Nrom {
 }
 
 impl Mapper for Nrom {
-    fn read(&self, address: u16) -> u8 {
+    fn read_prg(&self, address: u16) -> u8 {
         match address {
             0x6000..=0x7FFF => self.cartridge.prg_ram[address as usize - 0x6000],
             0x8000..=0xBFFF => self.cartridge.prg_rom[address as usize - 0x8000],
@@ -22,7 +22,14 @@ impl Mapper for Nrom {
                 let offset = if prg_rom_pages > 1 { 0x8000 } else { 0xC000 };
                 self.cartridge.prg_rom[address as usize - offset]
             }
-            _ => panic!("Trying to read from an invalid address 0x{:x}", address),
+            _ => panic!("Trying to read from an invalid address: 0x{:x}", address),
+        }
+    }
+
+    fn read_chr(&self, address: u16) -> u8 {
+        match address {
+            0x0000..=0x1FFF => self.cartridge.chr_rom[address as usize],
+            _ => panic!("Trying to read from an invalid address: 0x{:x}", address),
         }
     }
 

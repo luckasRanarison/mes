@@ -180,7 +180,7 @@ impl Cpu {
         (address, crossed)
     }
 
-    fn get_address(&self, adr_mode: AddressMode) -> (Address, bool) {
+    fn get_address(&mut self, adr_mode: AddressMode) -> (Address, bool) {
         match adr_mode {
             AddressMode::Implied(reg) => (Address::Register(reg), false),
             AddressMode::Immediate => (Address::Memory(self.pc), false),
@@ -246,7 +246,7 @@ impl Cpu {
         }
     }
 
-    fn read_address(&self, address: Address) -> u8 {
+    fn read_address(&mut self, address: Address) -> u8 {
         match address {
             Address::Memory(adr) => self.bus.read_u8(adr),
             Address::Register(reg) => self.read_register(reg),
