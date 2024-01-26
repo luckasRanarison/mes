@@ -1,4 +1,8 @@
-use crate::{bus::Bus, cartridge::Mirroring, mappers::MapperRef};
+use crate::{
+    bus::Bus,
+    cartridge::Mirroring,
+    mappers::{Mapper, MapperRef},
+};
 
 const VRAM_SIZE: usize = 2048;
 const PALETTE_SIZE: usize = 32;
@@ -13,7 +17,7 @@ pub struct PpuBus {
 impl Bus for PpuBus {
     fn read_u8(&mut self, address: u16) -> u8 {
         match address {
-            0x0000..=0x1FFF => self.mapper.borrow().read(address),
+            0x0000..=0x1FFF => self.mapper.read(address),
             0x2000..=0x3EFF => self.read_vram(address),
             0x3F00..=0x3FFF => self.read_palette(address),
             _ => self.read_u8(address & 0x3FFF),
@@ -22,7 +26,7 @@ impl Bus for PpuBus {
 
     fn write_u8(&mut self, address: u16, value: u8) {
         match address {
-            0x0000..=0x1FFF => self.mapper.borrow_mut().write(address, value),
+            0x0000..=0x1FFF => self.mapper.write(address, value),
             0x2000..=0x3EFF => self.write_vram(address, value),
             0x3F00..=0x3FFF => self.write_palette(address, value),
             _ => self.write_u8(address & 0x3FFF, value),
@@ -62,7 +66,7 @@ impl PpuBus {
     fn get_vram_address(&self, address: u16) -> u16 {
         let relative_address = address & 0x0FFF;
         let nametable_id = relative_address / 0x400;
-        let mirroring = self.mapper.borrow().get_mirroring();
+        let mirroring = self.mapper.get_mirroring();
         let mirrored_address = match mirroring {
             Mirroring::Horizontal if matches!(nametable_id, 1 | 2) => relative_address - 0x400,
             _ => relative_address,

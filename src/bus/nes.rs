@@ -1,6 +1,6 @@
 use crate::{
     cartridge::{error::LoadError, Cartridge},
-    mappers::{get_mapper, MapperRef},
+    mappers::{get_mapper, Mapper, MapperRef},
     ppu::Ppu,
 };
 
@@ -39,7 +39,7 @@ impl Bus for NesBus {
             0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read_data(),
             0x2008..=0x3FFF => self.read_u8(address & 0x2007),
-            0x4020..=0xFFFF => self.mapper.borrow().read(address),
+            0x4020..=0xFFFF => self.mapper.read(address),
             _ => panic!("Trying to read from write-only address: 0x{:x}", address),
         }
     }
@@ -58,7 +58,7 @@ impl Bus for NesBus {
             0x4000..=0x4013 | 0x4015 => {}
             0x4014 => {}
             0x4020..=0x5FFF => {}
-            0x6000..=0xFFFF => self.mapper.borrow_mut().write(address, value),
+            0x6000..=0xFFFF => self.mapper.write(address, value),
             _ => panic!("Trying to write to read-only address: 0x{:x}", address),
         }
     }

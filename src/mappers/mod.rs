@@ -27,3 +27,17 @@ pub fn get_mapper(cartridge: Cartridge) -> Option<MapperRef> {
         _ => None,
     }
 }
+
+impl Mapper for Rc<RefCell<dyn Mapper>> {
+    fn read(&self, address: u16) -> u8 {
+        self.borrow().read(address)
+    }
+
+    fn write(&mut self, address: u16, value: u8) {
+        self.borrow_mut().write(address, value)
+    }
+
+    fn get_mirroring(&self) -> Mirroring {
+        self.borrow().get_mirroring()
+    }
+}
