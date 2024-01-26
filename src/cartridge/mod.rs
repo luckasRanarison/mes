@@ -29,7 +29,7 @@ pub struct Header {
 
 impl Header {
     fn try_from_bytes(bytes: &[u8]) -> Result<Self, LoadError> {
-        if &bytes[0..4] != INES_ASCII {
+        if bytes[0..4] != INES_ASCII {
             return Err(LoadError::UnsupportedFileFormat);
         }
 
@@ -79,7 +79,7 @@ impl Cartridge {
         let prg_rom_size = header.prg_rom_pages as usize * PRG_ROM_PAGE_SIZE;
         let chr_rom_size = header.chr_rom_pages as usize * CHR_ROM_PAGE_SIZE;
         let prg_rom_start = INES_HEADER_SIZE + if header.trainer { TRAINER_SIZE } else { 0 };
-        let chr_rom_start = prg_rom_start as usize + prg_rom_size;
+        let chr_rom_start = prg_rom_start + prg_rom_size;
         let prg_rom = bytes[prg_rom_start..prg_rom_start + prg_rom_size].to_vec();
         let chr_rom = bytes[chr_rom_start..chr_rom_start + chr_rom_size].to_vec();
         let prg_ram_size = 0x1FFF;

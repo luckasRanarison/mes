@@ -2,6 +2,7 @@ use crate::{
     bus::Bus,
     cartridge::Mirroring,
     mappers::{Mapper, MapperRef},
+    utils::Clock,
 };
 
 const VRAM_SIZE: usize = 2048;
@@ -74,3 +75,5 @@ impl PpuBus {
         mirrored_address & 0x07FF
     }
 }
+
+impl Clock for PpuBus {}

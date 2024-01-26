@@ -59,10 +59,6 @@ impl ControlRegister {
         }
     }
 
-    pub fn get_master_slave_select(&self) -> u8 {
-        self.get(ControlFlag::P)
-    }
-
     pub fn generate_nmi(&self) -> bool {
         self.contains(ControlFlag::V)
     }

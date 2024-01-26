@@ -6,9 +6,9 @@ use address::{Address, AddressMode};
 use opcodes::{Asm, OPCODE_MAP};
 
 use crate::{
-    bus::{Bus, NesBus},
+    bus::{Bus, MainBus},
     cpu::register::{CpuRegister, StatusFlag, StatusRegister},
-    utils::BitFlag,
+    utils::{BitFlag, Clock},
 };
 
 use std::{
@@ -26,12 +26,13 @@ pub struct Cpu {
     y: u8,
     sr: StatusRegister,
     sp: u8,
-    bus: NesBus,
+    bus: MainBus,
     cycle: usize,
+    dma: bool,
 }
 
 impl Cpu {
-    pub fn new(bus: NesBus) -> Self {
+    pub fn new(bus: MainBus) -> Self {
         Self {
             pc: 0x00,
             ac: 0x00,
@@ -41,6 +42,7 @@ impl Cpu {
             sp: 0x00,
             bus,
             cycle: 0,
+            dma: false,
         }
     }
 
@@ -55,20 +57,44 @@ impl Cpu {
         self.push_stack_u8(self.sr.value());
         self.pc = self.bus.read_u16(RESET_VECTOR);
         self.cycle = 7;
+        self.dma = false;
     }
 
-    pub fn step(&mut self, steps: usize) {
-        for _ in 0..steps {
-            let opcode = self.fetch();
-            let cycles = self.execute(opcode);
-            self.cycle = self.cycle.wrapping_add(cycles as usize);
+    pub fn step(&mut self) {
+        let cycles = self.cycle();
+        self.cycle = self.cycle.wrapping_add(cycles as usize);
+        self.bus.tick(cycles);
+    }
+
+    pub fn cycle(&mut self) -> u8 {
+        if !self.dma && self.bus.dma() {
+            self.dma = true;
+
+            if self.cycle % 2 == 1 {
+                return 1;
+            }
         }
-    }
 
-    pub fn fetch(&mut self) -> u8 {
+        if let Some(state) = self.bus.get_dma_state() {
+            if state.buffer.is_some() {
+                let end = self.bus.write_dma_buffer();
+
+                if end {
+                    self.dma = false;
+                    return 2;
+                }
+            } else {
+                let address = state.get_ram_address();
+                let value = self.bus.read_u8(address);
+                self.bus.set_dma_buffer(value);
+            }
+
+            return 1;
+        }
+
         let opcode = self.bus.read_u8(self.pc);
         self.increment_pc(1);
-        opcode
+        self.execute(opcode)
     }
 
     pub fn execute(&mut self, opcode: u8) -> u8 {
@@ -734,7 +760,7 @@ impl fmt::Debug for Cpu {
 #[cfg(test)]
 mod tests {
     use crate::{
-        bus::{Bus, NesBus},
+        bus::{Bus, MainBus},
         cartridge::Cartridge,
         cpu::Cpu,
     };
@@ -779,7 +805,7 @@ mod tests {
         let log = fs::read_to_string("roms/nestest.log").unwrap();
         let rom = fs::read("roms/nestest.nes").unwrap();
         let cartridge = Cartridge::try_from_bytes(&rom).unwrap();
-        let bus = NesBus::new(cartridge).unwrap();
+        let bus = MainBus::new(cartridge).unwrap();
         let mut cpu = Cpu::new(bus);
 
         cpu.reset();
@@ -803,10 +829,7 @@ mod tests {
             assert_eq!(parsed.sr, cpu.sr.value());
             assert_eq!(parsed.cycle, cpu.cycle);
 
-            let opcode = cpu.fetch();
-            let cycles = cpu.execute(opcode);
-
-            cpu.cycle += cycles as usize;
+            cpu.step();
         }
     }
 }

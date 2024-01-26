@@ -41,7 +41,8 @@ impl Ppu {
 
 impl Ppu {
     pub fn read_status(&mut self) -> u8 {
-        let status = self.status.read();
+        let mask = 0b1110_0000;
+        let status = (self.status.read() & mask) | (self.vram_buffer & !mask);
         self.latch = false;
         self.status.update(StatusFlag::V, false);
         status
@@ -78,9 +79,12 @@ impl Ppu {
     }
 
     pub fn write_oam_data(&mut self, value: u8) {
-        let address = self.oam_addr as usize;
-        self.oam_data[address] = value;
+        self.write_oam(self.oam_addr, value);
         self.oam_addr = self.oam_addr.wrapping_add(1);
+    }
+
+    pub fn write_oam(&mut self, address: u8, value: u8) {
+        self.oam_data[address as usize] = value;
     }
 
     pub fn write_scroll(&mut self, value: u8) {
