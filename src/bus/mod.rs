@@ -29,7 +29,7 @@ pub struct MainBus {
     ram: [u8; 2048],
     ppu: Ppu,
     mapper: MapperRef,
-    dma: Option<DmaState>,
+    dma_adr: Option<u8>,
 }
 
 impl MainBus {
@@ -42,40 +42,31 @@ impl MainBus {
             ram,
             ppu,
             mapper,
-            dma: None,
+            dma_adr: None,
         })
     }
 
-    pub fn dma(&self) -> bool {
-        self.dma.is_some()
+    pub fn poll_dma(&mut self) -> Option<u8> {
+        self.dma_adr.take()
+    }
+
+    pub fn dma_cycle(&mut self, state: &mut DmaState) -> bool {
+        if let Some(buffer) = state.buffer {
+            let address = state.current_page;
+            self.ppu.write_oam(address, buffer); // put
+            state.current_page = address.wrapping_add(1);
+            state.buffer.take();
+        } else {
+            let address = state.get_ram_address();
+            let value = self.read_u8(address); // get
+            state.buffer = Some(value);
+        }
+
+        state.current_page == 0x00
     }
 
     fn setup_oam_dma(&mut self, offset: u8) {
-        self.dma = Some(DmaState::new(offset));
-    }
-
-    pub fn get_dma_state(&self) -> Option<&DmaState> {
-        self.dma.as_ref()
-    }
-
-    pub fn set_dma_buffer(&mut self, value: u8) {
-        let state = self.dma.as_mut().unwrap();
-        state.buffer = Some(value);
-    }
-
-    pub fn write_dma_buffer(&mut self) -> bool {
-        let state = self.dma.as_mut().unwrap();
-        let address = state.current_page;
-        let buffer = state.buffer.unwrap();
-        self.ppu.write_oam(address, buffer);
-        state.current_page = address.wrapping_add(1);
-        state.buffer.take();
-
-        if state.current_page == 0x00 {
-            self.dma.take();
-        }
-
-        self.dma.is_none()
+        self.dma_adr = Some(offset);
     }
 
     fn read_ram(&self, address: u16) -> u8 {

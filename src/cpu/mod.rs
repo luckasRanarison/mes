@@ -6,7 +6,7 @@ use address::{Address, AddressMode};
 use opcodes::{Asm, OPCODE_MAP};
 
 use crate::{
-    bus::{Bus, MainBus},
+    bus::{Bus, DmaState, MainBus},
     cpu::register::{CpuRegister, StatusFlag, StatusRegister},
     utils::{BitFlag, Clock},
 };
@@ -28,7 +28,7 @@ pub struct Cpu {
     sp: u8,
     bus: MainBus,
     cycle: usize,
-    dma: bool,
+    dma: Option<DmaState>,
 }
 
 impl Cpu {
@@ -42,7 +42,7 @@ impl Cpu {
             sp: 0x00,
             bus,
             cycle: 0,
-            dma: false,
+            dma: None,
         }
     }
 
@@ -57,7 +57,7 @@ impl Cpu {
         self.push_stack_u8(self.sr.value());
         self.pc = self.bus.read_u16(RESET_VECTOR);
         self.cycle = 7;
-        self.dma = false;
+        self.dma.take();
     }
 
     pub fn step(&mut self) {
@@ -67,29 +67,22 @@ impl Cpu {
     }
 
     pub fn cycle(&mut self) -> u8 {
-        if !self.dma && self.bus.dma() {
-            self.dma = true;
+        if let Some(address) = self.bus.poll_dma() {
+            self.dma = Some(DmaState::new(address));
 
             if self.cycle % 2 == 1 {
                 return 1;
             }
         }
 
-        if let Some(state) = self.bus.get_dma_state() {
-            if state.buffer.is_some() {
-                let end = self.bus.write_dma_buffer();
+        if let Some(dma) = self.dma.as_mut() {
+            let end = self.bus.dma_cycle(dma);
 
-                if end {
-                    self.dma = false;
-                    return 2;
-                }
-            } else {
-                let address = state.get_ram_address();
-                let value = self.bus.read_u8(address);
-                self.bus.set_dma_buffer(value);
+            if end {
+                self.dma.take();
             }
 
-            return 1;
+            return if end { 2 } else { 1 };
         }
 
         let opcode = self.bus.read_u8(self.pc);
