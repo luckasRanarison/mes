@@ -1,20 +1,21 @@
 use super::Mapper;
-use crate::cartridge::Cartridge;
+use crate::cartridge::{Cartridge, Mirroring};
 
 #[derive(Debug)]
-pub struct Nrom {
+pub struct NRom {
     cartridge: Cartridge,
 }
 
-impl Nrom {
+impl NRom {
     pub fn new(cartridge: Cartridge) -> Self {
         Self { cartridge }
     }
 }
 
-impl Mapper for Nrom {
-    fn read_prg(&self, address: u16) -> u8 {
+impl Mapper for NRom {
+    fn read(&self, address: u16) -> u8 {
         match address {
+            0x0000..=0x1FFF => self.cartridge.chr_rom[address as usize],
             0x6000..=0x7FFF => self.cartridge.prg_ram[address as usize - 0x6000],
             0x8000..=0xBFFF => self.cartridge.prg_rom[address as usize - 0x8000],
             0xC000..=0xFFFF => {
@@ -26,17 +27,14 @@ impl Mapper for Nrom {
         }
     }
 
-    fn read_chr(&self, address: u16) -> u8 {
-        match address {
-            0x0000..=0x1FFF => self.cartridge.chr_rom[address as usize],
-            _ => panic!("Trying to read from an invalid address: 0x{:x}", address),
-        }
-    }
-
     fn write(&mut self, address: u16, value: u8) {
         match address {
             0x6000..=0x7FFF => self.cartridge.prg_ram[address as usize - 0x6000] = value,
             _ => panic!("Trying to write to an invalid address: 0x{:x}", address),
         };
+    }
+
+    fn get_mirroring(&self) -> Mirroring {
+        self.cartridge.header.mirroring
     }
 }

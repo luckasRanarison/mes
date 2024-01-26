@@ -6,7 +6,7 @@ use address::{Address, AddressMode};
 use opcodes::{Asm, OPCODE_MAP};
 
 use crate::{
-    bus::Bus,
+    bus::{Bus, NesBus},
     cpu::register::{CpuRegister, StatusFlag, StatusRegister},
     utils::BitFlag,
 };
@@ -26,15 +26,12 @@ pub struct Cpu {
     y: u8,
     sr: StatusRegister,
     sp: u8,
-    bus: Box<dyn Bus>,
+    bus: NesBus,
     cycle: usize,
 }
 
 impl Cpu {
-    pub fn new<B>(bus: B) -> Self
-    where
-        B: Bus + 'static,
-    {
+    pub fn new(bus: NesBus) -> Self {
         Self {
             pc: 0x00,
             ac: 0x00,
@@ -42,7 +39,7 @@ impl Cpu {
             y: 0x00,
             sr: StatusRegister::default(),
             sp: 0x00,
-            bus: Box::new(bus),
+            bus,
             cycle: 0,
         }
     }
@@ -736,7 +733,11 @@ impl fmt::Debug for Cpu {
 
 #[cfg(test)]
 mod tests {
-    use crate::{bus::NesBus, cartridge::Cartridge, cpu::Cpu};
+    use crate::{
+        bus::{Bus, NesBus},
+        cartridge::Cartridge,
+        cpu::Cpu,
+    };
     use std::fs;
 
     #[derive(Debug)]
