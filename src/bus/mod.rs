@@ -1,9 +1,9 @@
 mod nes;
 mod ppu;
 
-pub use {nes::NesBus, ppu::PpuBus};
-
 use std::fmt::Debug;
+
+pub use {nes::NesBus, ppu::PpuBus};
 
 pub trait Bus: Debug {
     fn read_u8(&mut self, address: u16) -> u8;

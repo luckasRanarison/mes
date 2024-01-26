@@ -55,9 +55,14 @@ impl Ppu {
     pub fn read_data(&mut self) -> u8 {
         let address = self.addr.get();
         let buffered = self.vram_buffer;
-        self.vram_buffer = self.bus.read_u8(address);
+        let value = self.bus.read_u8(address);
+        self.vram_buffer = value;
         self.increment_vram_address();
-        buffered
+
+        match address & 0x3FFF {
+            0x3F00..=0x3FFF => value,
+            _ => buffered,
+        }
     }
 
     pub fn write_ctrl(&mut self, value: u8) {

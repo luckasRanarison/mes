@@ -97,6 +97,24 @@ impl Cartridge {
     }
 }
 
+pub fn create_cartridge_mock() -> Cartridge {
+    Cartridge {
+        header: Header {
+            prg_rom_pages: 1,
+            chr_rom_pages: 1,
+            prg_ram_pages: 0,
+            mirroring: Mirroring::Vertical,
+            battery: false,
+            trainer: false,
+            mapper: 0,
+        },
+        prg_rom: vec![0; PRG_ROM_PAGE_SIZE],
+        chr_rom: vec![0; CHR_ROM_PAGE_SIZE],
+        prg_ram: vec![],
+        chr_ram: vec![],
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Cartridge;

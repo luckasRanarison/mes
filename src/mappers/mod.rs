@@ -1,4 +1,4 @@
-pub mod mapper_0;
+mod mapper_0;
 
 use crate::{
     cartridge::{Cartridge, Mirroring},

@@ -75,3 +75,25 @@ impl ControlRegister {
         self.0.contains(flag as u8)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ControlRegister;
+
+    #[test]
+    fn test_base_nametable_address() {
+        let mut register = ControlRegister::default();
+
+        register.write(0b0000_0000);
+        assert_eq!(register.get_base_nametable_address(), 0x2000);
+
+        register.write(0b0000_0001);
+        assert_eq!(register.get_base_nametable_address(), 0x2400);
+
+        register.write(0b0000_0010);
+        assert_eq!(register.get_base_nametable_address(), 0x2800);
+
+        register.write(0b0000_0011);
+        assert_eq!(register.get_base_nametable_address(), 0x2C00);
+    }
+}
