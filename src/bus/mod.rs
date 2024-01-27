@@ -46,6 +46,10 @@ impl MainBus {
         })
     }
 
+    pub fn poll_nmi(&mut self) -> bool {
+        self.ppu.poll_nmi()
+    }
+
     pub fn poll_dma(&mut self) -> Option<u8> {
         self.dma_adr.take()
     }
@@ -112,6 +116,6 @@ impl Bus for MainBus {
 
 impl Clock for MainBus {
     fn tick(&mut self, cycles: u8) {
-        // TODO
+        self.ppu.tick(cycles * 3);
     }
 }

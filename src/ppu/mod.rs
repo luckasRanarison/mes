@@ -4,6 +4,7 @@ use crate::{
     bus::{Bus, PpuBus},
     mappers::MapperRef,
     ppu::registers::*,
+    utils::Clock,
 };
 
 const SRAM_SIZE: usize = 256;
@@ -14,6 +15,10 @@ pub struct Ppu {
     vram_buffer: u8,
     oam_addr: u8,
     latch: bool,
+    scanline: u16,
+    nmi: Option<bool>,
+    cycle: usize,
+    temp_cycle: u16,
     ctrl: ControlRegister,
     mask: MaskRegister,
     status: StatusRegister,
@@ -29,6 +34,10 @@ impl Ppu {
             vram_buffer: 0,
             oam_addr: 0,
             latch: false,
+            scanline: 0,
+            nmi: None,
+            cycle: 0,
+            temp_cycle: 0,
             ctrl: ControlRegister::default(),
             mask: MaskRegister::default(),
             status: StatusRegister::default(),
@@ -67,7 +76,13 @@ impl Ppu {
     }
 
     pub fn write_ctrl(&mut self, value: u8) {
+        let nmi_status = self.ctrl.generate_nmi();
+        let vblank = self.status.is_in_vblank();
         self.ctrl.write(value);
+
+        if !nmi_status && self.ctrl.generate_nmi() && vblank {
+            self.nmi = Some(true);
+        }
     }
 
     pub fn write_mask(&mut self, value: u8) {
@@ -101,8 +116,35 @@ impl Ppu {
         self.increment_vram_address();
     }
 
+    pub fn poll_nmi(&mut self) -> bool {
+        self.nmi.take().is_some()
+    }
+
     fn increment_vram_address(&mut self) {
         let offset = self.ctrl.get_vram_increment_value();
         self.addr.increment(offset);
+    }
+}
+
+impl Clock for Ppu {
+    fn tick(&mut self, cycles: u8) {
+        self.cycle = self.cycle.wrapping_add(cycles as usize);
+        self.temp_cycle += cycles as u16;
+
+        if self.temp_cycle <= 341 {
+            return;
+        }
+
+        self.temp_cycle -= 341;
+        self.scanline += 1;
+
+        if self.scanline == 241 {
+            self.status.update(StatusFlag::V, self.ctrl.generate_nmi());
+        }
+
+        if self.scanline >= 262 {
+            self.scanline = 0;
+            self.status.update(StatusFlag::V, false);
+        }
     }
 }

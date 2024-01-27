@@ -16,8 +16,11 @@ use std::{
     ops::{BitAnd, BitOr, BitXor},
 };
 
-const STACK_START: u16 = 0x100;
 const RESET_VECTOR: u16 = 0xFFFC;
+const NMI_VECTOR: u16 = 0xFFFE;
+const IRQ_VECTOR: u16 = 0xFFFA;
+const STACK_START: u16 = 0x100;
+const INTERRUPT_LATENCY: u8 = 7;
 
 pub struct Cpu {
     pc: u16,
@@ -56,7 +59,7 @@ impl Cpu {
         self.push_stack_u16(self.pc);
         self.push_stack_u8(self.sr.value());
         self.pc = self.bus.read_u16(RESET_VECTOR);
-        self.cycle = 7;
+        self.cycle = INTERRUPT_LATENCY as usize;
         self.dma.take();
     }
 
@@ -67,6 +70,10 @@ impl Cpu {
     }
 
     pub fn cycle(&mut self) -> u8 {
+        if self.bus.poll_nmi() {
+            return self.handle_nmi();
+        }
+
         if let Some(address) = self.bus.poll_dma() {
             self.dma = Some(DmaState::new(address));
 
@@ -722,6 +729,18 @@ impl Cpu {
         if predicate {
             self.pc = address.to_memory_unchecked();
         }
+    }
+
+    fn handle_nmi(&mut self) -> u8 {
+        let mut status = self.sr.value();
+        status.clear(StatusFlag::B as u8);
+        status.set(StatusFlag::__ as u8);
+        self.push_stack_u16(self.pc);
+        self.push_stack_u8(status);
+        self.sr.set(StatusFlag::I);
+        self.pc = self.bus.read_u16(NMI_VECTOR);
+
+        INTERRUPT_LATENCY
     }
 }
 
