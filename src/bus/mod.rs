@@ -3,6 +3,7 @@ mod ppu;
 
 use crate::{
     cartridge::{error::LoadError, Cartridge},
+    cpu::interrupt::Interrupt,
     mappers::{get_mapper, Mapper, MapperRef},
     ppu::Ppu,
     utils::Clock,
@@ -46,8 +47,8 @@ impl MainBus {
         })
     }
 
-    pub fn poll_nmi(&mut self) -> bool {
-        self.ppu.poll_nmi()
+    pub fn poll_interrupt(&mut self) -> Option<Interrupt> {
+        self.ppu.poll_nmi().then_some(Interrupt::Nmi)
     }
 
     pub fn poll_dma(&mut self) -> Option<u8> {

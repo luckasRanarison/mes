@@ -2,12 +2,17 @@ mod address;
 mod opcodes;
 mod register;
 
+pub mod interrupt;
+
 use address::{Address, AddressMode};
 use opcodes::{Asm, OPCODE_MAP};
 
 use crate::{
     bus::{Bus, DmaState, MainBus},
-    cpu::register::{CpuRegister, StatusFlag, StatusRegister},
+    cpu::{
+        interrupt::{Interrupt, INTERRUPT_LATENCY},
+        register::{CpuRegister, StatusFlag, StatusRegister},
+    },
     utils::{BitFlag, Clock},
 };
 
@@ -16,11 +21,7 @@ use std::{
     ops::{BitAnd, BitOr, BitXor},
 };
 
-const RESET_VECTOR: u16 = 0xFFFC;
-const NMI_VECTOR: u16 = 0xFFFE;
-const IRQ_VECTOR: u16 = 0xFFFA;
 const STACK_START: u16 = 0x100;
-const INTERRUPT_LATENCY: u8 = 7;
 
 pub struct Cpu {
     pc: u16,
@@ -32,6 +33,7 @@ pub struct Cpu {
     bus: MainBus,
     cycle: usize,
     dma: Option<DmaState>,
+    interrupt: Option<Interrupt>,
 }
 
 impl Cpu {
@@ -46,21 +48,8 @@ impl Cpu {
             bus,
             cycle: 0,
             dma: None,
+            interrupt: Some(Interrupt::Reset),
         }
-    }
-
-    pub fn reset(&mut self) {
-        self.pc = 0x00;
-        self.ac = 0x00;
-        self.x = 0x00;
-        self.y = 0x00;
-        self.sr = StatusRegister::default();
-        self.sp = 0x00;
-        self.push_stack_u16(self.pc);
-        self.push_stack_u8(self.sr.value());
-        self.pc = self.bus.read_u16(RESET_VECTOR);
-        self.cycle = INTERRUPT_LATENCY as usize;
-        self.dma.take();
     }
 
     pub fn step(&mut self) {
@@ -70,8 +59,14 @@ impl Cpu {
     }
 
     pub fn cycle(&mut self) -> u8 {
-        if self.bus.poll_nmi() {
-            return self.handle_nmi();
+        let interrupt = self.bus.poll_interrupt();
+
+        self.interrupt.or(interrupt);
+
+        if let Some(interrupt) = self.interrupt.take() {
+            if self.handle_interrupt(interrupt) {
+                return INTERRUPT_LATENCY;
+            }
         }
 
         if let Some(address) = self.bus.poll_dma() {
@@ -571,6 +566,7 @@ impl Cpu {
         self.sr.set(StatusFlag::I);
         self.push_stack_u16(self.pc + 2);
         self.push_stack_u8(self.sr.value());
+        self.pc = Interrupt::Irq.get_vector();
     }
 
     fn rti(&mut self) {
@@ -731,16 +727,20 @@ impl Cpu {
         }
     }
 
-    fn handle_nmi(&mut self) -> u8 {
+    fn handle_interrupt(&mut self, interrupt: Interrupt) -> bool {
+        if interrupt == Interrupt::Irq && self.sr.contains(StatusFlag::I) {
+            return false;
+        }
+
         let mut status = self.sr.value();
         status.clear(StatusFlag::B as u8);
         status.set(StatusFlag::__ as u8);
         self.push_stack_u16(self.pc);
         self.push_stack_u8(status);
         self.sr.set(StatusFlag::I);
-        self.pc = self.bus.read_u16(NMI_VECTOR);
+        self.pc = self.bus.read_u16(interrupt.get_vector());
 
-        INTERRUPT_LATENCY
+        true
     }
 }
 
@@ -820,7 +820,7 @@ mod tests {
         let bus = MainBus::new(cartridge).unwrap();
         let mut cpu = Cpu::new(bus);
 
-        cpu.reset();
+        cpu.step();
 
         assert_eq!(cpu.pc, 0xC004);
         assert_eq!(cpu.sp, 0xFD);
