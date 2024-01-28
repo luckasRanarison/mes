@@ -1,3 +1,5 @@
+mod frame;
+mod palette;
 mod registers;
 
 use crate::{
@@ -77,7 +79,7 @@ impl Ppu {
 
     pub fn write_ctrl(&mut self, value: u8) {
         let nmi_status = self.ctrl.generate_nmi();
-        let vblank = self.status.is_in_vblank();
+        let vblank = self.status.is_vblank();
         self.ctrl.write(value);
 
         if !nmi_status && self.ctrl.generate_nmi() && vblank {
@@ -118,6 +120,14 @@ impl Ppu {
 
     pub fn poll_nmi(&mut self) -> bool {
         self.nmi.take().is_some()
+    }
+
+    pub fn is_vblank(&self) -> bool {
+        self.status.is_vblank()
+    }
+
+    pub fn get_frame_buffer(&self) -> Vec<u8> {
+        todo!()
     }
 
     fn increment_vram_address(&mut self) {

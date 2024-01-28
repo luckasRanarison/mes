@@ -27,7 +27,7 @@ impl StatusRegister {
         self.contains(StatusFlag::S)
     }
 
-    pub fn is_in_vblank(&self) -> bool {
+    pub fn is_vblank(&self) -> bool {
         self.contains(StatusFlag::V)
     }
 

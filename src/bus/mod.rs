@@ -2,9 +2,8 @@ mod dma;
 mod ppu;
 
 use crate::{
-    cartridge::{error::LoadError, Cartridge},
     cpu::interrupt::Interrupt,
-    mappers::{get_mapper, Mapper, MapperRef},
+    mappers::{Mapper, MapperRef},
     ppu::Ppu,
     utils::Clock,
 };
@@ -35,18 +34,17 @@ pub struct MainBus {
 }
 
 impl MainBus {
-    pub fn new(cartridge: Cartridge) -> Result<Self, LoadError> {
-        let mapper = get_mapper(cartridge).ok_or(LoadError::UnsupportedMapper)?;
+    pub fn new(mapper: MapperRef) -> Self {
         let ppu = Ppu::new(mapper.clone());
         let ram = [0; 2048];
 
-        Ok(MainBus {
+        MainBus {
             ram,
             ppu,
             mapper,
             dma_adr: None,
             cycle: 0,
-        })
+        }
     }
 
     pub fn poll_interrupt(&mut self) -> Option<Interrupt> {
@@ -70,6 +68,14 @@ impl MainBus {
         }
 
         state.current_page == 0x00
+    }
+
+    pub fn is_vblank(&self) -> bool {
+        self.ppu.is_vblank()
+    }
+
+    pub fn get_frame_buffer(&self) -> Vec<u8> {
+        self.ppu.get_frame_buffer()
     }
 
     fn setup_oam_dma(&mut self, offset: u8) {

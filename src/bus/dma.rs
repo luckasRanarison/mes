@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct DmaState {
     pub high_byte: u8,
     pub current_page: u8,

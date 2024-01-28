@@ -183,6 +183,10 @@ impl Cpu {
         total_cycle
     }
 
+    pub fn bus(&self) -> &MainBus {
+        &self.bus
+    }
+
     fn increment_pc(&mut self, value: u8) {
         self.pc = self.pc.wrapping_add(value as u16);
     }
@@ -773,6 +777,7 @@ mod tests {
         bus::{Bus, MainBus},
         cartridge::Cartridge,
         cpu::Cpu,
+        mappers::get_mapper,
     };
     use std::fs;
 
@@ -815,7 +820,8 @@ mod tests {
         let log = fs::read_to_string("roms/nestest.log").unwrap();
         let rom = fs::read("roms/nestest.nes").unwrap();
         let cartridge = Cartridge::try_from_bytes(&rom).unwrap();
-        let bus = MainBus::new(cartridge).unwrap();
+        let mapper = get_mapper(cartridge).unwrap();
+        let bus = MainBus::new(mapper);
         let mut cpu = Cpu::new(bus);
 
         cpu.step();
