@@ -17,7 +17,7 @@ pub struct Ppu {
     latch: bool,
     scanline: u16,
     nmi: Option<bool>,
-    cycle: usize,
+    cycle: u64,
     temp_cycle: u16,
     ctrl: ControlRegister,
     mask: MaskRegister,
@@ -128,7 +128,7 @@ impl Ppu {
 
 impl Clock for Ppu {
     fn tick(&mut self, cycles: u8) {
-        self.cycle = self.cycle.wrapping_add(cycles as usize);
+        self.cycle += cycles as u64;
         self.temp_cycle += cycles as u16;
 
         if self.temp_cycle <= 341 {
@@ -139,7 +139,11 @@ impl Clock for Ppu {
         self.scanline += 1;
 
         if self.scanline == 241 {
-            self.status.update(StatusFlag::V, self.ctrl.generate_nmi());
+            self.status.update(StatusFlag::V, true);
+
+            if self.ctrl.generate_nmi() {
+                self.nmi = Some(true);
+            }
         }
 
         if self.scanline >= 262 {

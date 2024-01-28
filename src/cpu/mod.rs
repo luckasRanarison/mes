@@ -31,7 +31,7 @@ pub struct Cpu {
     sr: StatusRegister,
     sp: u8,
     bus: MainBus,
-    cycle: usize,
+    cycle: u64,
     dma: Option<DmaState>,
     interrupt: Option<Interrupt>,
 }
@@ -54,14 +54,12 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let cycles = self.cycle();
-        self.cycle = self.cycle.wrapping_add(cycles as usize);
+        self.cycle += cycles as u64;
         self.bus.tick(cycles);
     }
 
     pub fn cycle(&mut self) -> u8 {
-        let interrupt = self.bus.poll_interrupt();
-
-        self.interrupt.or(interrupt);
+        self.interrupt = self.interrupt.or(self.bus.poll_interrupt());
 
         if let Some(interrupt) = self.interrupt.take() {
             if self.handle_interrupt(interrupt) {
@@ -787,7 +785,7 @@ mod tests {
         y: u8,
         sr: u8,
         sp: u8,
-        cycle: usize,
+        cycle: u64,
     }
 
     fn parse_log_line(line: &str) -> LogLine {
