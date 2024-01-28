@@ -19,8 +19,12 @@ impl ControlRegister {
         self.0 = value;
     }
 
+    pub fn get_nametable_bits(&self) -> u8 {
+        self.get(ControlFlag::N1) * 2 + self.get(ControlFlag::N0)
+    }
+
     pub fn get_base_nametable_address(&self) -> u16 {
-        let value = self.get(ControlFlag::N1) * 2 + self.get(ControlFlag::N0);
+        let value = self.get_nametable_bits();
 
         match value {
             0 => 0x2000,

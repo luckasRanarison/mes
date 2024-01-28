@@ -1,32 +1,57 @@
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct AddressRegiser {
-    high: u8,
-    low: u8,
+    value: u16,
 }
 
 impl AddressRegiser {
     pub fn get(&self) -> u16 {
-        u16::from_be_bytes([self.high, self.low])
+        self.value
     }
 
-    pub fn write(&mut self, value: u8, latch: &mut bool) {
-        if *latch {
-            self.low = value;
-            self.set(self.get() & 0x3FFF);
-        } else {
-            self.high = value;
-        }
+    pub fn set_coarse_x(&mut self, value: u8) {
+        self.value |= value as u16;
+    }
 
-        *latch = !*latch;
+    pub fn get_coarse_x(&self) -> u8 {
+        (self.value & 0b11111) as u8
+    }
+
+    pub fn set_coarse_y(&mut self, value: u8) {
+        self.value |= (value as u16) << 5;
+    }
+
+    pub fn get_coarse_y(&self) -> u8 {
+        ((self.value >> 5) & 0b11111) as u8
+    }
+
+    pub fn set_nametable(&mut self, value: u8) {
+        self.value |= (value as u16) << 10;
+    }
+
+    pub fn get_nametable(&self) -> u8 {
+        (self.value >> 10 & 0b11) as u8
+    }
+
+    pub fn set_fine_y(&mut self, value: u8) {
+        self.value |= (value as u16) << 12;
+    }
+
+    pub fn get_fine_y(&self) -> u8 {
+        (self.value >> 12 & 0b111) as u8
+    }
+
+    pub fn set_high_byte(&mut self, value: u8) {
+        self.value |= (value as u16) << 8;
+        self.value &= !(1 << 15);
+    }
+
+    pub fn set_low_byte(&mut self, value: u8) {
+        self.value &= 0b1111_1111_0000_0000;
+        self.value |= value as u16;
     }
 
     pub fn increment(&mut self, value: u8) {
-        let result = self.get().wrapping_add(value as u16);
-        self.set(result & 0x3FFF);
-    }
-
-    fn set(&mut self, value: u16) {
-        [self.high, self.low] = value.to_be_bytes();
+        self.value = self.value.wrapping_add(value as u16);
     }
 }
 
@@ -36,22 +61,17 @@ mod tests {
 
     #[test]
     fn test_address_register() {
-        let mut register = AddressRegiser::default();
-        let mut latch = false;
+        let mut t = AddressRegiser::default();
 
-        register.write(0x20, &mut latch);
-        assert_eq!(register.high, 0x20);
-
-        register.write(0xC0, &mut latch);
-        assert_eq!(register.low, 0xC0);
-        assert_eq!(register.get(), 0x20C0);
-
-        register.write(0x40, &mut latch);
-        assert_eq!(register.high, 0x40);
-
-        register.write(0x10, &mut latch);
-        register.increment(5);
-        assert_eq!(register.get(), 0x0015);
-        assert_eq!(latch, false);
+        t.set_nametable(0b10);
+        assert_eq!(0b10, t.get_nametable());
+        t.set_coarse_x(0b01111);
+        assert_eq!(0b01111, t.get_coarse_x());
+        t.set_coarse_y(0b01011);
+        assert_eq!(0b01011, t.get_coarse_y());
+        t.set_high_byte(0b101011);
+        assert_eq!(0b0010_1011_0110_1111, t.get());
+        t.set_low_byte(0b0000_0011);
+        assert_eq!(0b0010_1011_0000_0011, t.get());
     }
 }

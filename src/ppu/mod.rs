@@ -5,7 +5,7 @@ mod registers;
 use crate::{
     bus::{Bus, PpuBus},
     mappers::MapperRef,
-    ppu::registers::*,
+    ppu::{frame::Frame, registers::*},
     utils::Clock,
 };
 
@@ -16,16 +16,17 @@ pub struct Ppu {
     oam_data: [u8; SRAM_SIZE],
     vram_buffer: u8,
     oam_addr: u8,
+    t_addr: AddressRegiser,
+    v_addr: AddressRegiser,
+    fine_x: u8,
     latch: bool,
-    scanline: u16,
     nmi: Option<bool>,
     cycle: u64,
     temp_cycle: u16,
+    frame: Frame,
     ctrl: ControlRegister,
     mask: MaskRegister,
     status: StatusRegister,
-    scroll: ScrollRegister,
-    addr: AddressRegiser,
     bus: PpuBus,
 }
 
@@ -35,16 +36,17 @@ impl Ppu {
             oam_data: [0; SRAM_SIZE],
             vram_buffer: 0,
             oam_addr: 0,
+            t_addr: AddressRegiser::default(),
+            v_addr: AddressRegiser::default(),
+            fine_x: 0,
             latch: false,
-            scanline: 0,
             nmi: None,
             cycle: 0,
             temp_cycle: 0,
+            frame: Frame::default(),
             ctrl: ControlRegister::default(),
             mask: MaskRegister::default(),
             status: StatusRegister::default(),
-            scroll: ScrollRegister::default(),
-            addr: AddressRegiser::default(),
             bus: PpuBus::new(mapper),
         }
     }
@@ -65,7 +67,7 @@ impl Ppu {
     }
 
     pub fn read_data(&mut self) -> u8 {
-        let address = self.addr.get();
+        let address = self.t_addr.get();
         let buffered = self.vram_buffer;
         let value = self.bus.read_u8(address);
         self.vram_buffer = value;
@@ -81,6 +83,7 @@ impl Ppu {
         let nmi_status = self.ctrl.generate_nmi();
         let vblank = self.status.is_vblank();
         self.ctrl.write(value);
+        self.t_addr.set_nametable(self.ctrl.get_nametable_bits());
 
         if !nmi_status && self.ctrl.generate_nmi() && vblank {
             self.nmi = Some(true);
@@ -105,15 +108,30 @@ impl Ppu {
     }
 
     pub fn write_scroll(&mut self, value: u8) {
-        self.scroll.write(value, &mut self.latch);
+        if self.latch {
+            self.t_addr.set_coarse_y(value >> 3);
+            self.t_addr.set_fine_y(0b0000_0111);
+        } else {
+            self.t_addr.set_coarse_x(value >> 3);
+            self.fine_x = 0b0000_0111;
+        }
+
+        self.latch = !self.latch;
     }
 
     pub fn write_addr(&mut self, value: u8) {
-        self.addr.write(value, &mut self.latch);
+        if self.latch {
+            self.t_addr.set_low_byte(value);
+            self.v_addr = self.t_addr;
+        } else {
+            self.t_addr.set_high_byte(value & 0b0011_1111);
+        }
+
+        self.latch = !self.latch;
     }
 
     pub fn write_data(&mut self, value: u8) {
-        let address = self.addr.get();
+        let address = self.t_addr.get();
         self.bus.write_u8(address, value);
         self.increment_vram_address();
     }
@@ -132,33 +150,12 @@ impl Ppu {
 
     fn increment_vram_address(&mut self) {
         let offset = self.ctrl.get_vram_increment_value();
-        self.addr.increment(offset);
+        self.t_addr.increment(offset);
     }
 }
 
 impl Clock for Ppu {
     fn tick(&mut self, cycles: u8) {
         self.cycle += cycles as u64;
-        self.temp_cycle += cycles as u16;
-
-        if self.temp_cycle <= 341 {
-            return;
-        }
-
-        self.temp_cycle -= 341;
-        self.scanline += 1;
-
-        if self.scanline == 241 {
-            self.status.update(StatusFlag::V, true);
-
-            if self.ctrl.generate_nmi() {
-                self.nmi = Some(true);
-            }
-        }
-
-        if self.scanline >= 262 {
-            self.scanline = 0;
-            self.status.update(StatusFlag::V, false);
-        }
     }
 }
