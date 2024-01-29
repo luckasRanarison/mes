@@ -9,6 +9,7 @@ impl AddressRegiser {
     }
 
     pub fn set_coarse_x(&mut self, value: u8) {
+        self.value &= !(0b11111);
         self.value |= value as u16;
     }
 
@@ -17,6 +18,7 @@ impl AddressRegiser {
     }
 
     pub fn set_coarse_y(&mut self, value: u8) {
+        self.value &= !(0b11111 << 5);
         self.value |= (value as u16) << 5;
     }
 
@@ -25,6 +27,7 @@ impl AddressRegiser {
     }
 
     pub fn set_nametable(&mut self, value: u8) {
+        self.value &= !(0b11) << 10;
         self.value |= (value as u16) << 10;
     }
 
@@ -33,6 +36,7 @@ impl AddressRegiser {
     }
 
     pub fn set_fine_y(&mut self, value: u8) {
+        self.value &= !(0b111) << 12;
         self.value |= (value as u16) << 12;
     }
 
@@ -41,12 +45,13 @@ impl AddressRegiser {
     }
 
     pub fn set_high_byte(&mut self, value: u8) {
+        self.value &= !(0b111111 << 8);
         self.value |= (value as u16) << 8;
         self.value &= !(1 << 15);
     }
 
     pub fn set_low_byte(&mut self, value: u8) {
-        self.value &= 0b1111_1111_0000_0000;
+        self.value &= !0xFF;
         self.value |= value as u16;
     }
 

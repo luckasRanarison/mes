@@ -67,7 +67,7 @@ impl Ppu {
     }
 
     pub fn read_data(&mut self) -> u8 {
-        let address = self.t_addr.get();
+        let address = self.v_addr.get();
         let buffered = self.vram_buffer;
         let value = self.bus.read_u8(address);
         self.vram_buffer = value;
@@ -110,10 +110,10 @@ impl Ppu {
     pub fn write_scroll(&mut self, value: u8) {
         if self.latch {
             self.t_addr.set_coarse_y(value >> 3);
-            self.t_addr.set_fine_y(0b0000_0111);
+            self.t_addr.set_fine_y(value & 0b111);
         } else {
             self.t_addr.set_coarse_x(value >> 3);
-            self.fine_x = 0b0000_0111;
+            self.fine_x = value & 0b111;
         }
 
         self.latch = !self.latch;
@@ -124,14 +124,14 @@ impl Ppu {
             self.t_addr.set_low_byte(value);
             self.v_addr = self.t_addr;
         } else {
-            self.t_addr.set_high_byte(value & 0b0011_1111);
+            self.t_addr.set_high_byte(value & 0b111111);
         }
 
         self.latch = !self.latch;
     }
 
     pub fn write_data(&mut self, value: u8) {
-        let address = self.t_addr.get();
+        let address = self.v_addr.get();
         self.bus.write_u8(address, value);
         self.increment_vram_address();
     }
@@ -150,7 +150,7 @@ impl Ppu {
 
     fn increment_vram_address(&mut self) {
         let offset = self.ctrl.get_vram_increment_value();
-        self.t_addr.increment(offset);
+        self.v_addr.increment(offset);
     }
 }
 
