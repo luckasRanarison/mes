@@ -33,7 +33,7 @@ impl BitFlag<u8> for u8 {
 }
 
 pub trait Clock {
-    fn tick(&mut self, cycles: u8) {}
+    fn tick(&mut self) {}
 }
 
 #[cfg(test)]

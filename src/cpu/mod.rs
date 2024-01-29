@@ -54,8 +54,11 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let cycles = self.cycle();
-        self.cycle += cycles as u64;
-        self.bus.tick(cycles);
+
+        for _ in 0..cycles {
+            self.cycle += 1;
+            self.bus.tick();
+        }
     }
 
     pub fn cycle(&mut self) -> u8 {

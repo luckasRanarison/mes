@@ -126,8 +126,11 @@ impl Bus for MainBus {
 }
 
 impl Clock for MainBus {
-    fn tick(&mut self, cycles: u8) {
-        self.cycle += cycles as u64;
-        self.ppu.tick(cycles * 3);
+    fn tick(&mut self) {
+        self.cycle += 1;
+
+        for _ in 0..3 {
+            self.ppu.tick();
+        }
     }
 }

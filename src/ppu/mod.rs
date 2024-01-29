@@ -16,13 +16,19 @@ pub struct Ppu {
     oam_data: [u8; SRAM_SIZE],
     vram_buffer: u8,
     oam_addr: u8,
-    t_addr: AddressRegiser,
-    v_addr: AddressRegiser,
+    t_addr: AddressRegister,
+    v_addr: AddressRegister,
     fine_x: u8,
     latch: bool,
     nmi: Option<bool>,
     cycle: u64,
-    temp_cycle: u16,
+    dot: u16,
+    scanline: u16,
+    tile_id: u8,
+    tile_attr: u8,
+    bg_tile_low: u8,
+    bg_tile_high: u8,
+    address: u16,
     frame: Frame,
     ctrl: ControlRegister,
     mask: MaskRegister,
@@ -36,13 +42,19 @@ impl Ppu {
             oam_data: [0; SRAM_SIZE],
             vram_buffer: 0,
             oam_addr: 0,
-            t_addr: AddressRegiser::default(),
-            v_addr: AddressRegiser::default(),
+            t_addr: AddressRegister::default(),
+            v_addr: AddressRegister::default(),
             fine_x: 0,
             latch: false,
             nmi: None,
             cycle: 0,
-            temp_cycle: 0,
+            dot: 0,
+            scanline: 0,
+            tile_id: 0,
+            tile_attr: 0,
+            bg_tile_low: 0,
+            bg_tile_high: 0,
+            address: 0,
             frame: Frame::default(),
             ctrl: ControlRegister::default(),
             mask: MaskRegister::default(),
@@ -155,7 +167,75 @@ impl Ppu {
 }
 
 impl Clock for Ppu {
-    fn tick(&mut self, cycles: u8) {
-        self.cycle += cycles as u64;
+    fn tick(&mut self) {
+        self.cycle += 1;
+
+        match self.scanline {
+            0..=239 => match self.dot {
+                1..=255 | 321..=338 => match self.dot % 8 {
+                    1 => self.address = self.v_addr.get_nametable_address(),
+                    2 => self.tile_id = self.bus.read_u8(self.address),
+                    3 => self.address = self.v_addr.get_attribute_address(),
+                    4 => {
+                        self.tile_attr = self.bus.read_u8(self.address);
+
+                        if self.v_addr.get_coarse_y() & 0x02 != 0 {
+                            self.tile_attr >>= 4;
+                        }
+                        if self.v_addr.get_coarse_x() & 0x02 != 0 {
+                            self.tile_attr >>= 2;
+                        }
+
+                        self.tile_attr &= 0x02;
+                    }
+                    5 => {
+                        self.address = self.ctrl.get_base_nametable_address()
+                            + (self.tile_id as u16) * 16
+                            + self.v_addr.get_fine_y() as u16
+                            + 0
+                    }
+                    6 => self.bg_tile_low = self.bus.read_u8(self.address),
+                    7 => {
+                        self.address = self.ctrl.get_base_nametable_address()
+                            + (self.tile_id as u16) * 16
+                            + self.v_addr.get_fine_y() as u16
+                            + 8
+                    }
+                    0 => {
+                        self.bg_tile_high = self.bus.read_u8(self.address);
+                        self.v_addr.scroll_x();
+                    }
+                    _ => {}
+                },
+                256 => {
+                    self.bg_tile_high = self.bus.read_u8(self.address);
+                    self.v_addr.scroll_y();
+                }
+                257 => self.v_addr.set_x(self.t_addr),
+                339 => self.address = self.v_addr.get_nametable_address(),
+                340 => self.tile_id = self.bus.read_u8(self.address),
+                _ => {}
+            },
+            240 if self.dot == 1 => {
+                self.status.update(StatusFlag::V, true);
+
+                if self.ctrl.generate_nmi() {
+                    self.nmi = Some(true)
+                }
+            }
+            261 => match self.dot {
+                1 => self.status.update(StatusFlag::V, false),
+                280..=304 => self.v_addr.set_y(self.t_addr),
+                _ => {}
+            },
+            _ => {}
+        }
+
+        self.dot += 1;
+
+        if self.dot == 341 {
+            self.dot = 0;
+            self.scanline = (self.scanline + 1) % 261;
+        }
     }
 }
