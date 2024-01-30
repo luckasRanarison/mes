@@ -2,9 +2,18 @@
 name = "mes"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Yet another NES emulator"
+license = "MIT"
+repository = "https//github.com/luckasRanarison/mes"
+authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
 
 [dependencies]
 lazy_static = "1.4.0"
 thiserror = "1.0.56"
+wasm-bindgen = { version = "0.2.90", optional = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
