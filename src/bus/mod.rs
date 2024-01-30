@@ -74,7 +74,7 @@ impl MainBus {
         self.ppu.is_vblank()
     }
 
-    pub fn get_frame_buffer(&self) -> Vec<u8> {
+    pub fn get_frame_buffer(&mut self) -> Vec<u8> {
         self.ppu.get_frame_buffer()
     }
 
@@ -115,10 +115,11 @@ impl Bus for MainBus {
             0x2005 if self.cycle >= 29_658 => self.ppu.write_scroll(value),
             0x2006 if self.cycle >= 29_658 => self.ppu.write_addr(value),
             0x2007 => self.ppu.write_data(value),
+            0x2000 | 0x2001 | 0x2005 | 0x2006 => {} // ignored before 29658 cycles
             0x2008..=0x3FFF => self.write_u8(address & 0x2007, value),
-            0x4000..=0x4013 | 0x4015 => {}
+            0x4000..=0x4013 | 0x4015 => {} // TODO: APU
             0x4014 => self.setup_oam_dma(value),
-            0x4016 | 0x4017 => {}
+            0x4016 | 0x4017 => {} // TODO: controllers
             0x4020..=0xFFFF => self.mapper.write(address, value),
             _ => panic!("Trying to write to read-only address: 0x{:x}", address),
         }

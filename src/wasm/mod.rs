@@ -22,11 +22,13 @@ impl Nes {
         self.cpu.step();
     }
 
-    pub fn is_vblank(&self) -> bool {
+    #[wasm_bindgen(js_name = "isVblank")]
+    pub fn is_vblank(&mut self) -> bool {
         self.cpu.bus().is_vblank()
     }
 
-    pub fn get_frame_buffer(&self) -> Vec<u8> {
-        self.cpu.bus().get_frame_buffer()
+    #[wasm_bindgen(js_name = "getFrameBuffer")]
+    pub fn get_frame_buffer(&mut self) -> Vec<u8> {
+        self.cpu.bus_mut().get_frame_buffer()
     }
 }

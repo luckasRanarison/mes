@@ -190,6 +190,10 @@ impl Cpu {
         &self.bus
     }
 
+    pub fn bus_mut(&mut self) -> &mut MainBus {
+        &mut self.bus
+    }
+
     fn increment_pc(&mut self, value: u8) {
         self.pc = self.pc.wrapping_add(value as u16);
     }

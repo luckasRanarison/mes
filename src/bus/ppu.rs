@@ -77,3 +77,29 @@ impl PpuBus {
 }
 
 impl Clock for PpuBus {}
+
+#[cfg(test)]
+mod tests {
+    use super::PpuBus;
+    use crate::{bus::Bus, cartridge::create_cartridge_mock, get_mapper};
+
+    #[test]
+    fn test_ppu_bus_read_write() {
+        let mapper = get_mapper(create_cartridge_mock()).unwrap();
+        let mut bus = PpuBus::new(mapper);
+
+        bus.write_u8(0x2000, 0x20);
+        bus.write_u8(0x2400, 0x60);
+        assert_eq!(bus.read_u8(0x2000), 0x20);
+        assert_eq!(bus.read_u8(0x2800), 0x20);
+        assert_eq!(bus.read_u8(0x2400), 0x60);
+        assert_eq!(bus.read_u8(0x2C00), 0x60);
+        assert_eq!(bus.vram[0x000], 0x20);
+        assert_eq!(bus.vram[0x400], 0x60);
+
+        bus.write_u8(0x3F00, 0x10);
+        assert_eq!(bus.read_u8(0x3F00), 0x10);
+        assert_eq!(bus.read_u8(0x3F20), 0x10);
+        assert_eq!(bus.palette[0], 0x10);
+    }
+}

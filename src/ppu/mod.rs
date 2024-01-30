@@ -1,13 +1,14 @@
-mod frame;
 mod palette;
 mod registers;
 
 use crate::{
     bus::{Bus, PpuBus},
     mappers::MapperRef,
-    ppu::{frame::Frame, registers::*},
-    utils::Clock,
+    ppu::registers::*,
+    utils::{BitFlag, Clock},
 };
+
+use self::palette::NES_PALETTE;
 
 const SRAM_SIZE: usize = 256;
 
@@ -29,7 +30,6 @@ pub struct Ppu {
     bg_tile_low: u8,
     bg_tile_high: u8,
     address: u16,
-    frame: Frame,
     ctrl: ControlRegister,
     mask: MaskRegister,
     status: StatusRegister,
@@ -55,7 +55,6 @@ impl Ppu {
             bg_tile_low: 0,
             bg_tile_high: 0,
             address: 0,
-            frame: Frame::default(),
             ctrl: ControlRegister::default(),
             mask: MaskRegister::default(),
             status: StatusRegister::default(),
@@ -170,65 +169,12 @@ impl Clock for Ppu {
     fn tick(&mut self) {
         self.cycle += 1;
 
-        match self.scanline {
-            0..=239 => match self.dot {
-                1..=255 | 321..=338 => match self.dot % 8 {
-                    1 => self.address = self.v_addr.get_nametable_address(),
-                    2 => self.tile_id = self.bus.read_u8(self.address),
-                    3 => self.address = self.v_addr.get_attribute_address(),
-                    4 => {
-                        self.tile_attr = self.bus.read_u8(self.address);
+        if self.scanline == 241 && self.dot == 1 {
+            self.status.update(StatusFlag::V, true);
+        }
 
-                        if self.v_addr.get_coarse_y() & 0x02 != 0 {
-                            self.tile_attr >>= 4;
-                        }
-                        if self.v_addr.get_coarse_x() & 0x02 != 0 {
-                            self.tile_attr >>= 2;
-                        }
-
-                        self.tile_attr &= 0x02;
-                    }
-                    5 => {
-                        self.address = self.ctrl.get_base_nametable_address()
-                            + (self.tile_id as u16) * 16
-                            + self.v_addr.get_fine_y() as u16
-                            + 0
-                    }
-                    6 => self.bg_tile_low = self.bus.read_u8(self.address),
-                    7 => {
-                        self.address = self.ctrl.get_base_nametable_address()
-                            + (self.tile_id as u16) * 16
-                            + self.v_addr.get_fine_y() as u16
-                            + 8
-                    }
-                    0 => {
-                        self.bg_tile_high = self.bus.read_u8(self.address);
-                        self.v_addr.scroll_x();
-                    }
-                    _ => {}
-                },
-                256 => {
-                    self.bg_tile_high = self.bus.read_u8(self.address);
-                    self.v_addr.scroll_y();
-                }
-                257 => self.v_addr.set_x(self.t_addr),
-                339 => self.address = self.v_addr.get_nametable_address(),
-                340 => self.tile_id = self.bus.read_u8(self.address),
-                _ => {}
-            },
-            240 if self.dot == 1 => {
-                self.status.update(StatusFlag::V, true);
-
-                if self.ctrl.generate_nmi() {
-                    self.nmi = Some(true)
-                }
-            }
-            261 => match self.dot {
-                1 => self.status.update(StatusFlag::V, false),
-                280..=304 => self.v_addr.set_y(self.t_addr),
-                _ => {}
-            },
-            _ => {}
+        if self.scanline == 261 && self.dot == 1 {
+            self.status.update(StatusFlag::V, false);
         }
 
         self.dot += 1;
@@ -237,5 +183,50 @@ impl Clock for Ppu {
             self.dot = 0;
             self.scanline = (self.scanline + 1) % 261;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Ppu;
+    use crate::{cartridge::create_cartridge_mock, get_mapper};
+
+    #[test]
+    fn test_ppu_oam_read_write() {
+        let mapper = get_mapper(create_cartridge_mock()).unwrap();
+        let mut ppu = Ppu::new(mapper);
+
+        ppu.write_oam_address(0x0F);
+        ppu.write_oam_data(0x20);
+        ppu.write_oam_data(0x21);
+
+        assert_eq!(ppu.oam_addr, 0x11);
+        assert_eq!(ppu.oam_data[0x0F], 0x20);
+        assert_eq!(ppu.oam_data[0x10], 0x21);
+    }
+
+    #[test]
+    fn test_ppu_data_read_write() {
+        let mapper = get_mapper(create_cartridge_mock()).unwrap();
+        let mut ppu = Ppu::new(mapper);
+
+        ppu.write_addr(0x20);
+        ppu.write_addr(0x50);
+
+        assert_eq!(ppu.v_addr.get(), 0x2050);
+        assert_eq!(ppu.latch, false);
+
+        ppu.write_data(0x45);
+
+        assert_eq!(ppu.v_addr.get(), 0x2051);
+
+        ppu.write_addr(0x20);
+        ppu.write_addr(0x50);
+        let buffer = ppu.read_data();
+        let data = ppu.read_data();
+
+        assert_eq!(ppu.v_addr.get(), 0x2052);
+        assert_eq!(buffer, 0x00);
+        assert_eq!(data, 0x45);
     }
 }
