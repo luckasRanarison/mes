@@ -74,7 +74,7 @@ impl MainBus {
         self.ppu.is_vblank()
     }
 
-    pub fn get_frame_buffer(&mut self) -> Vec<u8> {
+    pub fn get_frame_buffer(&mut self) -> &[u8] {
         self.ppu.get_frame_buffer()
     }
 
@@ -99,7 +99,7 @@ impl Bus for MainBus {
             0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read_data(),
             0x2008..=0x3FFF => self.read_u8(address & 0x2007),
-            0x4016 => 0, // TODO: APU
+            0x4016 | 0x4017 => 0, // TODO: APU
             0x4020..=0xFFFF => self.mapper.read(address),
             _ => panic!("Trying to read from write-only address: 0x{:x}", address),
         }

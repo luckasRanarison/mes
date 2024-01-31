@@ -18,17 +18,15 @@ impl Nes {
         Self { cpu }
     }
 
-    pub fn step(&mut self) {
-        self.cpu.step();
-    }
-
-    #[wasm_bindgen(js_name = "isVblank")]
-    pub fn is_vblank(&mut self) -> bool {
-        self.cpu.bus().is_vblank()
+    #[wasm_bindgen(js_name = "stepFrame")]
+    pub fn step_frame(&mut self) {
+        for _ in 0..29780 {
+            self.cpu.step();
+        }
     }
 
     #[wasm_bindgen(js_name = "getFrameBuffer")]
-    pub fn get_frame_buffer(&mut self) -> Vec<u8> {
-        self.cpu.bus_mut().get_frame_buffer()
+    pub fn get_frame_buffer(&mut self) -> *const u8 {
+        self.cpu.bus_mut().get_frame_buffer().as_ptr()
     }
 }

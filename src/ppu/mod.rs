@@ -155,7 +155,7 @@ impl Ppu {
         self.status.is_vblank()
     }
 
-    pub fn get_frame_buffer(&self) -> Vec<u8> {
+    pub fn get_frame_buffer(&self) -> &[u8] {
         todo!()
     }
 
