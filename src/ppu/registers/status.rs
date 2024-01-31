@@ -35,6 +35,10 @@ impl StatusRegister {
         self.0.update(flag as u8, state);
     }
 
+    pub fn clear(&mut self) {
+        self.0 &= 0b0001_1111;
+    }
+
     fn contains(&self, flag: StatusFlag) -> bool {
         self.0.contains(flag as u8)
     }

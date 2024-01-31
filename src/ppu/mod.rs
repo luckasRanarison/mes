@@ -30,6 +30,7 @@ pub struct Ppu {
     bg_tile_low: u8,
     bg_tile_high: u8,
     address: u16,
+    odd_frame: bool,
     ctrl: ControlRegister,
     mask: MaskRegister,
     status: StatusRegister,
@@ -55,6 +56,7 @@ impl Ppu {
             bg_tile_low: 0,
             bg_tile_high: 0,
             address: 0,
+            odd_frame: false,
             ctrl: ControlRegister::default(),
             mask: MaskRegister::default(),
             status: StatusRegister::default(),
@@ -169,19 +171,62 @@ impl Clock for Ppu {
     fn tick(&mut self) {
         self.cycle += 1;
 
-        if self.scanline == 241 && self.dot == 1 {
-            self.status.update(StatusFlag::V, true);
-        }
+        match self.scanline {
+            0..=239 | 261 => match self.dot {
+                1..=256 | 321..=336 => match self.dot % 8 {
+                    1 => {
+                        // fetch NT address
 
-        if self.scanline == 261 && self.dot == 1 {
-            self.status.update(StatusFlag::V, false);
+                        if self.dot == 261 {
+                            self.status.clear();
+                        }
+                    }
+                    2 => {} // read NT
+                    3 => {} // fetch AT address
+                    4 => {} // read AT
+                    5 => {} // Read BG lsbits address
+                    6 => {} // Read BG lsbits
+                    7 => {} // Read BG msbits address
+                    0 => {
+                        // Read BG msbits
+
+                        if self.dot == 256 {
+                            self.v_addr.scroll_y();
+                        }
+
+                        self.v_addr.scroll_x();
+                    }
+                    _ => {}
+                },
+                257 => self.v_addr.set_x(self.t_addr),
+                280..=304 if self.scanline == 261 => self.v_addr.set_y(self.t_addr),
+                337 | 339 => {} // fetch NT address
+                338 | 340 => {
+                    // read NT
+
+                    if self.scanline == 261 && self.odd_frame {
+                        self.dot = 0;
+                    }
+                }
+                _ => {}
+            },
+            241 if self.dot == 1 => {
+                self.status.update(StatusFlag::V, true);
+                self.nmi = self.ctrl.generate_nmi().then_some(true);
+            }
+            _ => {}
         }
 
         self.dot += 1;
 
-        if self.dot == 341 {
+        if self.dot > 340 {
             self.dot = 0;
-            self.scanline = (self.scanline + 1) % 261;
+            self.scanline += 1;
+
+            if self.scanline > 261 {
+                self.scanline = 0;
+                self.odd_frame = !self.odd_frame;
+            }
         }
     }
 }
