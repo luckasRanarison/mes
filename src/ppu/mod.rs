@@ -1,3 +1,6 @@
+// https://www.nesdev.org/wiki/PPU_programmer_reference
+// https://www.nesdev.org/wiki/PPU_rendering
+
 mod palette;
 mod registers;
 

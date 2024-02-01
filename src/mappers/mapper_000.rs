@@ -1,3 +1,5 @@
+// https://www.nesdev.org/wiki/NROM
+
 use super::Mapper;
 use crate::cartridge::{Cartridge, Mirroring};
 

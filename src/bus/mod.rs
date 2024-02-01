@@ -55,6 +55,7 @@ impl MainBus {
         self.dma_adr.take()
     }
 
+    // https://www.nesdev.org/wiki/DMA#OAM_DMA
     pub fn dma_cycle(&mut self, state: &mut DmaState) -> bool {
         if let Some(buffer) = state.buffer {
             let address = state.current_page;

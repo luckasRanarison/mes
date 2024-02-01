@@ -1,3 +1,5 @@
+// https://www.nesdev.org/wiki/CPU_interrupts
+
 pub const INTERRUPT_LATENCY: u8 = 7;
 
 #[derive(Debug, Clone, Copy, PartialEq)]

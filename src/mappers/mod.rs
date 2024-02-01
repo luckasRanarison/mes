@@ -1,8 +1,8 @@
-mod mapper_0;
+mod mapper_000;
 
 use crate::{
     cartridge::{Cartridge, Mirroring},
-    mappers::mapper_0::NRom,
+    mappers::mapper_000::NRom,
 };
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
