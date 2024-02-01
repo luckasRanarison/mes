@@ -1,25 +1,27 @@
 // https://www.nesdev.org/wiki/PPU_programmer_reference
 // https://www.nesdev.org/wiki/PPU_rendering
 
+mod frame;
 mod palette;
 mod registers;
 
 use crate::{
     bus::{Bus, PpuBus},
     mappers::MapperRef,
-    ppu::registers::*,
-    utils::{BitFlag, Clock},
+    ppu::{frame::Frame, palette::NES_PALETTE, registers::*},
+    utils::{BitPlane, Clock},
 };
 
-use self::palette::NES_PALETTE;
-
-const SRAM_SIZE: usize = 256;
+const OAM_SIZE: usize = 256;
 
 #[derive(Debug)]
 pub struct Ppu {
-    oam_data: [u8; SRAM_SIZE],
+    oam_data: [u8; OAM_SIZE],
     vram_buffer: u8,
     oam_addr: u8,
+    ctrl: ControlRegister,
+    mask: MaskRegister,
+    status: StatusRegister,
     t_addr: AddressRegister,
     v_addr: AddressRegister,
     fine_x: u8,
@@ -28,24 +30,26 @@ pub struct Ppu {
     cycle: u64,
     dot: u16,
     scanline: u16,
-    tile_id: u8,
-    tile_attr: u8,
-    bg_tile_low: u8,
-    bg_tile_high: u8,
     address: u16,
+    tile_id: u8,
+    tile_attribute: u8,
+    bg_tile: BitPlane<u8>,
+    bg_shifter: BitPlane<u16>,
+    pal_shifter: BitPlane<u8>,
     odd_frame: bool,
-    ctrl: ControlRegister,
-    mask: MaskRegister,
-    status: StatusRegister,
+    frame: Frame,
     bus: PpuBus,
 }
 
 impl Ppu {
     pub fn new(mapper: MapperRef) -> Self {
         Self {
-            oam_data: [0; SRAM_SIZE],
+            oam_data: [0; OAM_SIZE],
             vram_buffer: 0,
             oam_addr: 0,
+            ctrl: ControlRegister::default(),
+            mask: MaskRegister::default(),
+            status: StatusRegister::default(),
             t_addr: AddressRegister::default(),
             v_addr: AddressRegister::default(),
             fine_x: 0,
@@ -54,15 +58,14 @@ impl Ppu {
             cycle: 0,
             dot: 0,
             scanline: 0,
-            tile_id: 0,
-            tile_attr: 0,
-            bg_tile_low: 0,
-            bg_tile_high: 0,
             address: 0,
+            tile_id: 0,
+            tile_attribute: 0,
+            bg_tile: BitPlane::default(),
+            bg_shifter: BitPlane::default(),
+            pal_shifter: BitPlane::default(),
             odd_frame: false,
-            ctrl: ControlRegister::default(),
-            mask: MaskRegister::default(),
-            status: StatusRegister::default(),
+            frame: Frame::default(),
             bus: PpuBus::new(mapper),
         }
     }
@@ -161,12 +164,125 @@ impl Ppu {
     }
 
     pub fn get_frame_buffer(&self) -> &[u8] {
-        todo!()
+        self.frame.get_buffer()
     }
 
     fn increment_vram_address(&mut self) {
         let offset = self.ctrl.get_vram_increment_value();
         self.v_addr.increment(offset);
+    }
+
+    fn load_shifters(&mut self) {
+        self.bg_shifter.low = (self.bg_shifter.low & 0xFF00) | self.bg_tile.low as u16;
+        self.bg_shifter.high = (self.bg_shifter.high & 0xFF00) | self.bg_tile.high as u16;
+        self.pal_shifter.low = self.tile_attribute & 1;
+        self.pal_shifter.high = (self.tile_attribute >> 1) & 1;
+    }
+
+    fn update_shifters(&mut self) {
+        self.bg_shifter.low <<= 1;
+        self.bg_shifter.high <<= 1;
+        self.pal_shifter.low = (self.pal_shifter.low << 1) | (self.tile_attribute & 1);
+        self.pal_shifter.high = (self.pal_shifter.high << 1) | ((self.tile_attribute >> 1) & 1);
+    }
+
+    fn tick_background(&mut self) {
+        match self.dot {
+            1..=256 | 321..=336 => {
+                self.update_shifters();
+                self.on_background_dot()
+            }
+            257 => {
+                if self.mask.is_rendering() {
+                    self.v_addr.set_x(self.t_addr)
+                }
+            }
+            280..=304 => {
+                if self.scanline == 261 && self.mask.is_rendering() {
+                    self.v_addr.set_y(self.t_addr)
+                }
+            }
+            337 | 339 => self.address = self.v_addr.get_nametable_address(),
+            338 | 340 => {
+                self.tile_id = self.bus.read_u8(self.address);
+
+                if self.scanline == 261 && self.odd_frame {
+                    self.dot += 1;
+                }
+            }
+            _ => {} // garbage NT
+        };
+    }
+
+    fn on_background_dot(&mut self) {
+        match self.dot % 8 {
+            1 => {
+                self.load_shifters();
+                self.address = self.v_addr.get_nametable_address();
+
+                if self.dot == 261 {
+                    self.status.clear();
+                }
+            }
+            2 => self.tile_id = self.bus.read_u8(self.address),
+            3 => self.address = self.v_addr.get_attribute_address(),
+            4 => {
+                self.tile_attribute = self.bus.read_u8(self.address);
+
+                if self.v_addr.get_coarse_y() & 2 > 0 {
+                    self.tile_attribute >>= 4;
+                }
+                if self.v_addr.get_coarse_x() & 2 > 0 {
+                    self.tile_attribute >>= 2;
+                }
+
+                self.tile_attribute &= 0b11;
+            }
+            5 => {
+                let nametable = self.ctrl.get_background_pattern_table_address();
+                let fine_y = self.v_addr.get_fine_y() as u16;
+                self.address = nametable + (self.tile_id as u16) * 16 + fine_y + 0;
+            }
+            6 => self.bg_tile.low = self.bus.read_u8(self.address),
+            7 => self.address += 8,
+            0 => {
+                self.bg_tile.high = self.bus.read_u8(self.address);
+
+                if self.mask.is_rendering() {
+                    if self.dot == 256 {
+                        self.v_addr.scroll_y();
+                    }
+
+                    self.v_addr.scroll_x();
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn render_pixel(&mut self) {
+        let x = self.dot as usize;
+        let y = self.scanline as usize;
+
+        if x < 256 && y < 240 {
+            let mask = 0x8000 >> self.fine_x;
+            let low_plane = self.bg_shifter.low;
+            let low_pixel = if low_plane & mask > 0 { 1 } else { 0 };
+            let high_plane = self.bg_shifter.high;
+            let high_pixel = if high_plane & mask > 0 { 2 } else { 0 };
+            let result = low_pixel + high_pixel;
+
+            // TODO: fetch palette
+            let rgb = match result {
+                0 => NES_PALETTE[0],
+                1 => NES_PALETTE[1],
+                2 => NES_PALETTE[2],
+                3 => NES_PALETTE[3],
+                _ => unreachable!(),
+            };
+
+            self.frame.set_pixel(x, y, rgb);
+        }
     }
 }
 
@@ -175,51 +291,7 @@ impl Clock for Ppu {
         self.cycle += 1;
 
         match self.scanline {
-            0..=239 | 261 => match self.dot {
-                1..=256 | 321..=336 => match self.dot % 8 {
-                    1 => {
-                        // fetch NT address
-
-                        if self.dot == 261 {
-                            self.status.clear();
-                        }
-                    }
-                    2 => {} // read NT
-                    3 => {} // fetch AT address
-                    4 => {} // read AT
-                    5 => {} // Read BG lsbits address
-                    6 => {} // Read BG lsbits
-                    7 => {} // Read BG msbits address
-                    0 => {
-                        // Read BG msbits
-
-                        if self.mask.is_rendering() {
-                            if self.dot == 256 {
-                                self.v_addr.scroll_y();
-                            }
-
-                            self.v_addr.scroll_x();
-                        }
-                    }
-                    _ => {}
-                },
-                257 if self.mask.is_rendering() => self.v_addr.set_x(self.t_addr),
-                257 => {}
-                280..=304 => {
-                    if self.scanline == 261 && self.mask.is_rendering() {
-                        self.v_addr.set_y(self.t_addr)
-                    }
-                }
-                337 | 339 => {} // fetch NT address
-                338 | 340 => {
-                    // read NT
-
-                    if self.scanline == 261 && self.odd_frame {
-                        self.dot = 0;
-                    }
-                }
-                _ => {}
-            },
+            0..=239 | 261 => self.tick_background(),
             241 if self.dot == 1 => {
                 self.status.update(StatusFlag::V, true);
                 self.nmi = self.ctrl.generate_nmi().then_some(true);
@@ -227,10 +299,15 @@ impl Clock for Ppu {
             _ => {}
         }
 
+        // WIP
+        if self.mask.is_rendering() {
+            self.render_pixel();
+        }
+
         self.dot += 1;
 
         if self.dot > 340 {
-            self.dot = 0;
+            self.dot %= 341;
             self.scanline += 1;
 
             if self.scanline > 261 {

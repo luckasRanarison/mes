@@ -75,7 +75,7 @@ impl MainBus {
         self.ppu.is_vblank()
     }
 
-    pub fn get_frame_buffer(&mut self) -> &[u8] {
+    pub fn get_frame_buffer(&self) -> &[u8] {
         self.ppu.get_frame_buffer()
     }
 

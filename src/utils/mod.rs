@@ -32,6 +32,12 @@ impl BitFlag<u8> for u8 {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct BitPlane<T> {
+    pub low: T,
+    pub high: T,
+}
+
 pub trait Clock {
     fn tick(&mut self) {}
 }

@@ -20,13 +20,13 @@ impl Nes {
 
     #[wasm_bindgen(js_name = "stepFrame")]
     pub fn step_frame(&mut self) {
-        for _ in 0..29780 {
+        while !self.cpu.bus().is_vblank() {
             self.cpu.step();
         }
     }
 
     #[wasm_bindgen(js_name = "getFrameBuffer")]
     pub fn get_frame_buffer(&mut self) -> *const u8 {
-        self.cpu.bus_mut().get_frame_buffer().as_ptr()
+        self.cpu.bus().get_frame_buffer().as_ptr()
     }
 }
