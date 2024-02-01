@@ -190,16 +190,23 @@ impl Clock for Ppu {
                     0 => {
                         // Read BG msbits
 
-                        if self.dot == 256 {
-                            self.v_addr.scroll_y();
-                        }
+                        if self.mask.is_rendering() {
+                            if self.dot == 256 {
+                                self.v_addr.scroll_y();
+                            }
 
-                        self.v_addr.scroll_x();
+                            self.v_addr.scroll_x();
+                        }
                     }
                     _ => {}
                 },
-                257 => self.v_addr.set_x(self.t_addr),
-                280..=304 if self.scanline == 261 => self.v_addr.set_y(self.t_addr),
+                257 if self.mask.is_rendering() => self.v_addr.set_x(self.t_addr),
+                257 => {}
+                280..=304 => {
+                    if self.scanline == 261 && self.mask.is_rendering() {
+                        self.v_addr.set_y(self.t_addr)
+                    }
+                }
                 337 | 339 => {} // fetch NT address
                 338 | 340 => {
                     // read NT

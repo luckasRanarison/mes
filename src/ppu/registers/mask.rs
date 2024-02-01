@@ -19,6 +19,10 @@ impl MaskRegister {
         self.0 = value;
     }
 
+    pub fn is_rendering(&self) -> bool {
+        self.show_background() || self.show_sprites()
+    }
+
     pub fn is_grayscale(&self) -> bool {
         self.contains(MaskFlag::G0)
     }
