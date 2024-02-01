@@ -1,8 +1,8 @@
 pub mod bus;
 pub mod cartridge;
 pub mod cpu;
+pub mod mappers;
 
-mod mappers;
 mod ppu;
 mod utils;
 

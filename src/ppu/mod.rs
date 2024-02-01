@@ -137,7 +137,7 @@ impl Ppu {
             self.t_addr.set_low_byte(value);
             self.v_addr = self.t_addr;
         } else {
-            self.t_addr.set_high_byte(value & 0b111111);
+            self.t_addr.set_high_byte(value & 0x3F);
         }
 
         self.latch = !self.latch;
@@ -234,7 +234,7 @@ impl Clock for Ppu {
 #[cfg(test)]
 mod tests {
     use super::Ppu;
-    use crate::{cartridge::create_cartridge_mock, get_mapper};
+    use crate::{cartridge::create_cartridge_mock, mappers::get_mapper};
 
     #[test]
     fn test_ppu_oam_read_write() {

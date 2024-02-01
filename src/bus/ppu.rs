@@ -81,7 +81,7 @@ impl Clock for PpuBus {}
 #[cfg(test)]
 mod tests {
     use super::PpuBus;
-    use crate::{bus::Bus, cartridge::create_cartridge_mock, get_mapper};
+    use crate::{bus::Bus, cartridge::create_cartridge_mock, mappers::get_mapper};
 
     #[test]
     fn test_ppu_bus_read_write() {
