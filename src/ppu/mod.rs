@@ -35,7 +35,7 @@ pub struct Ppu {
     tile_attribute: u8,
     bg_tile: BitPlane<u8>,
     bg_shifter: BitPlane<u16>,
-    pal_shifter: BitPlane<u8>,
+    pal_shifter: BitPlane<u16>,
     odd_frame: bool,
     frame: Frame,
     bus: PpuBus,
@@ -175,15 +175,25 @@ impl Ppu {
     fn load_shifters(&mut self) {
         self.bg_shifter.low = (self.bg_shifter.low & 0xFF00) | self.bg_tile.low as u16;
         self.bg_shifter.high = (self.bg_shifter.high & 0xFF00) | self.bg_tile.high as u16;
-        self.pal_shifter.low = self.tile_attribute & 1;
-        self.pal_shifter.high = (self.tile_attribute >> 1) & 1;
+        self.pal_shifter.low = (self.pal_shifter.low & 0xFF00)
+            | if self.tile_attribute & 0b01 > 0 {
+                0xFF
+            } else {
+                0x00
+            };
+        self.pal_shifter.high = (self.pal_shifter.high & 0xFF00)
+            | if self.tile_attribute & 0b10 > 0 {
+                0xFF
+            } else {
+                0x00
+            };
     }
 
     fn update_shifters(&mut self) {
         self.bg_shifter.low <<= 1;
         self.bg_shifter.high <<= 1;
-        self.pal_shifter.low = (self.pal_shifter.low << 1) | (self.tile_attribute & 1);
-        self.pal_shifter.high = (self.pal_shifter.high << 1) | ((self.tile_attribute >> 1) & 1);
+        self.pal_shifter.low <<= 1;
+        self.pal_shifter.high <<= 1;
     }
 
     fn tick_background(&mut self) {
@@ -261,7 +271,7 @@ impl Ppu {
     }
 
     fn render_pixel(&mut self) {
-        let x = self.dot as usize;
+        let x = self.dot.saturating_sub(1) as usize; // one dot offset
         let y = self.scanline as usize;
 
         if x < 256 && y < 240 {
@@ -270,13 +280,18 @@ impl Ppu {
             let low_pixel = if low_plane & mask > 0 { 1 } else { 0 };
             let high_plane = self.bg_shifter.high;
             let high_pixel = if high_plane & mask > 0 { 2 } else { 0 };
-            let result = low_pixel | high_pixel;
-            let palette = (self.pal_shifter.high & 1) << 2 | self.pal_shifter.low & 1;
-            let palette_address = 0x3F00 + (4 * palette as u16 + result as u16);
+            let pixel = high_pixel + low_pixel;
+
+            let low_plane = self.pal_shifter.low;
+            let low_pal = if low_plane & mask > 0 { 1 } else { 0 };
+            let high_plane = self.pal_shifter.high;
+            let high_pal = if high_plane & mask > 0 { 2 } else { 0 };
+            let palette = high_pal + low_pal;
+            let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
             let palette_index = self.bus.read_u8(palette_address);
             let rgb = NES_PALETTE[palette_index as usize];
 
-            self.frame.set_pixel(x.saturating_sub(1), y, rgb);
+            self.frame.set_pixel(x, y, rgb);
         }
     }
 }
