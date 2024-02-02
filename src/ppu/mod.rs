@@ -206,7 +206,7 @@ impl Ppu {
             338 | 340 => {
                 self.tile_id = self.bus.read_u8(self.address);
 
-                if self.scanline == 261 && self.odd_frame {
+                if self.dot == 340 && self.scanline == 261 && self.odd_frame {
                     self.dot += 1;
                 }
             }
@@ -270,18 +270,13 @@ impl Ppu {
             let low_pixel = if low_plane & mask > 0 { 1 } else { 0 };
             let high_plane = self.bg_shifter.high;
             let high_pixel = if high_plane & mask > 0 { 2 } else { 0 };
-            let result = low_pixel + high_pixel;
+            let result = low_pixel | high_pixel;
+            let palette = (self.pal_shifter.high & 1) << 2 | self.pal_shifter.low & 1;
+            let palette_address = 0x3F00 + (4 * palette as u16 + result as u16);
+            let palette_index = self.bus.read_u8(palette_address);
+            let rgb = NES_PALETTE[palette_index as usize];
 
-            // TODO: fetch palette
-            let rgb = match result {
-                0 => NES_PALETTE[0],
-                1 => NES_PALETTE[1],
-                2 => NES_PALETTE[2],
-                3 => NES_PALETTE[3],
-                _ => unreachable!(),
-            };
-
-            self.frame.set_pixel(x, y, rgb);
+            self.frame.set_pixel(x.saturating_sub(1), y, rgb);
         }
     }
 }
