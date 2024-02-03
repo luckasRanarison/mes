@@ -5,7 +5,7 @@ use crate::{
     cpu::interrupt::Interrupt,
     mappers::{Mapper, MapperRef},
     ppu::Ppu,
-    utils::Clock,
+    utils::{BitFlag, Clock},
 };
 
 use std::fmt::Debug;
@@ -31,6 +31,8 @@ pub struct MainBus {
     mapper: MapperRef,
     dma_adr: Option<u8>,
     cycle: u64,
+    strobe: bool,
+    controllers: [u8; 2],
 }
 
 impl MainBus {
@@ -44,6 +46,8 @@ impl MainBus {
             mapper,
             dma_adr: None,
             cycle: 0,
+            strobe: false,
+            controllers: [0, 0],
         }
     }
 
@@ -79,6 +83,10 @@ impl MainBus {
         self.ppu.get_frame_buffer()
     }
 
+    pub fn set_controller_button(&mut self, id: usize, button: u8) {
+        self.controllers[id].set(button);
+    }
+
     fn setup_oam_dma(&mut self, offset: u8) {
         self.dma_adr = Some(offset);
     }
@@ -90,6 +98,20 @@ impl MainBus {
     fn write_ram(&mut self, address: u16, value: u8) {
         self.ram[address as usize % 0x8000] = value;
     }
+
+    fn write_controller(&mut self, value: u8) {
+        self.strobe = value == 1;
+    }
+
+    fn read_controller(&mut self, id: u16) -> u8 {
+        let result = self.controllers[id as usize].get(7);
+
+        if !self.strobe {
+            self.controllers[id as usize] <<= 1;
+        }
+
+        result
+    }
 }
 
 impl Bus for MainBus {
@@ -100,7 +122,7 @@ impl Bus for MainBus {
             0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read_data(),
             0x2008..=0x3FFF => self.read_u8(address & 0x2007),
-            0x4016 | 0x4017 => 0, // TODO: APU
+            0x4016 | 0x4017 => self.read_controller(address & 1),
             0x4020..=0xFFFF => self.mapper.read(address),
             _ => panic!("Trying to read from write-only address: 0x{:x}", address),
         }
@@ -120,7 +142,7 @@ impl Bus for MainBus {
             0x2008..=0x3FFF => self.write_u8(address & 0x2007, value),
             0x4000..=0x4013 | 0x4015 => {} // TODO: APU
             0x4014 => self.setup_oam_dma(value),
-            0x4016 | 0x4017 => {} // TODO: controllers
+            0x4016 | 0x4017 => self.write_controller(value),
             0x4020..=0xFFFF => self.mapper.write(address, value),
             _ => panic!("Trying to write to read-only address: 0x{:x}", address),
         }

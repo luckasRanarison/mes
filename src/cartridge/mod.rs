@@ -1,8 +1,6 @@
 // https://www.nesdev.org/wiki/INES
 
-pub mod error;
-
-use crate::{cartridge::error::LoadError, utils::BitFlag};
+use crate::{error::Error, utils::BitFlag};
 
 const INES_ASCII: [u8; 4] = [0x4E, 0x45, 0x53, 0x1A];
 const INES_HEADER_SIZE: usize = 16;
@@ -30,16 +28,16 @@ pub struct Header {
 }
 
 impl Header {
-    fn try_from_bytes(bytes: &[u8]) -> Result<Self, LoadError> {
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
         if bytes[0..4] != INES_ASCII {
-            return Err(LoadError::UnsupportedFileFormat);
+            return Err(Error::UnsupportedFileFormat);
         }
 
-        let prg_rom_pages = *bytes.get(4).ok_or(LoadError::UnexpectedEndOfInput)?;
-        let chr_rom_pages = *bytes.get(5).ok_or(LoadError::UnexpectedEndOfInput)?;
-        let flags_6 = bytes.get(6).ok_or(LoadError::UnexpectedEndOfInput)?;
-        let flags_7 = bytes.get(7).ok_or(LoadError::UnexpectedEndOfInput)?;
-        let prg_ram_pages = *bytes.get(8).ok_or(LoadError::UnexpectedEndOfInput)?;
+        let prg_rom_pages = *bytes.get(4).ok_or(Error::UnexpectedEndOfInput)?;
+        let chr_rom_pages = *bytes.get(5).ok_or(Error::UnexpectedEndOfInput)?;
+        let flags_6 = bytes.get(6).ok_or(Error::UnexpectedEndOfInput)?;
+        let flags_7 = bytes.get(7).ok_or(Error::UnexpectedEndOfInput)?;
+        let prg_ram_pages = *bytes.get(8).ok_or(Error::UnexpectedEndOfInput)?;
 
         let battery = flags_6.contains(1);
         let trainer = flags_6.contains(2);
@@ -75,7 +73,7 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, LoadError> {
+    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
         let header = Header::try_from_bytes(bytes)?;
 
         let prg_rom_size = header.prg_rom_pages as usize * PRG_ROM_PAGE_SIZE;
