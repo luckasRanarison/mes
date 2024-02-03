@@ -1,5 +1,6 @@
 // https://www.nesdev.org/wiki/PPU_programmer_reference
 // https://www.nesdev.org/wiki/PPU_rendering
+// https://www.nesdev.org/wiki/PPU_sprite_evaluation
 
 mod frame;
 mod palette;
@@ -17,6 +18,7 @@ const SECONDARY_OAM_SIZE: usize = 32;
 
 #[derive(Debug)]
 pub struct Ppu {
+    bus: PpuBus,
     primary_oam: [u8; PRIMARY_OAM_SIZE],
     secondary_oam: [u8; SECONDARY_OAM_SIZE],
     vram_buffer: u8,
@@ -32,20 +34,24 @@ pub struct Ppu {
     cycle: u64,
     dot: u16,
     scanline: u16,
+    frame: Frame,
+    odd_frame: bool,
     address: u16,
     bg_pattern_id: u8,
     bg_palette_id: u8,
     bg_pattern: BitPlane<u8>,
     bg_pattern_shift: BitPlane<u16>,
     bg_palette_shift: BitPlane<u16>,
-    odd_frame: bool,
-    frame: Frame,
-    bus: PpuBus,
+    oam_buffer: u8,
+    primary_oam_index: u8,
+    secondary_oam_index: u8,
+    oam_index_overflow: bool,
 }
 
 impl Ppu {
     pub fn new(mapper: MapperRef) -> Self {
         Self {
+            bus: PpuBus::new(mapper),
             primary_oam: [0; PRIMARY_OAM_SIZE],
             secondary_oam: [0; SECONDARY_OAM_SIZE],
             vram_buffer: 0,
@@ -61,15 +67,18 @@ impl Ppu {
             cycle: 0,
             dot: 0,
             scanline: 0,
+            frame: Frame::default(),
+            odd_frame: false,
             address: 0,
             bg_pattern_id: 0,
             bg_palette_id: 0,
             bg_pattern: BitPlane::default(),
             bg_pattern_shift: BitPlane::default(),
             bg_palette_shift: BitPlane::default(),
-            odd_frame: false,
-            frame: Frame::default(),
-            bus: PpuBus::new(mapper),
+            oam_buffer: 0,
+            primary_oam_index: 0,
+            secondary_oam_index: 0,
+            oam_index_overflow: false,
         }
     }
 }
@@ -79,7 +88,7 @@ impl Ppu {
         let mask = 0b1110_0000;
         let status = (self.status.read() & mask) | (self.vram_buffer & !mask);
         self.latch = false;
-        self.status.update(StatusFlag::V, false);
+        self.status.clear_vblank();
         status
     }
 
@@ -226,10 +235,6 @@ impl Ppu {
             1 => {
                 self.load_shifters();
                 self.address = self.v_addr.get_nametable_address();
-
-                if self.dot == 261 {
-                    self.status.clear();
-                }
             }
             2 => self.bg_pattern_id = self.bus.read_u8(self.address),
             3 => self.address = self.v_addr.get_attribute_address(),
@@ -267,6 +272,65 @@ impl Ppu {
         }
     }
 
+    fn tick_sprite(&mut self) {
+        if self.scanline == 261 {
+            return;
+        }
+
+        match self.dot {
+            1..=64 => {
+                if self.dot == 1 {
+                    self.secondary_oam_index = 0;
+                }
+
+                if self.dot % 2 == 0 {
+                    self.secondary_oam[self.secondary_oam_index as usize] = self.oam_buffer;
+                    self.secondary_oam_index += 1;
+                } else {
+                    self.oam_buffer = 0xFF;
+                }
+            }
+            65..=256 => {
+                if self.dot == 65 {
+                    self.primary_oam_index = 0;
+                    self.secondary_oam_index = 0;
+                }
+
+                if self.dot % 2 == 1 {
+                    self.oam_buffer = self.primary_oam[self.primary_oam_index as usize];
+                } else {
+                    self.evaluate_sprite();
+                }
+            }
+            257..=320 => {
+                // sprite fetch
+            }
+            _ => {}
+        }
+    }
+
+    fn evaluate_sprite(&mut self) {
+        if self.secondary_oam_index < 32 {
+            let sprite_y = self.oam_buffer;
+            let sprite_height = self.ctrl.get_sprite_height() as i16;
+            let offset = self.scanline as i16 - sprite_y as i16;
+
+            if offset >= 0 || offset < sprite_height {
+                let i = self.secondary_oam_index as usize;
+                let j = self.primary_oam_index as usize;
+
+                self.secondary_oam[i..i + 4].copy_from_slice(&self.primary_oam[j..j + 4]);
+                self.secondary_oam_index += 4;
+            }
+        } else {
+            self.status.set_sprite_overflow();
+        }
+
+        let (index, overflow) = self.primary_oam_index.overflowing_add(4);
+        self.primary_oam_index = index;
+        self.oam_index_overflow |= overflow;
+    }
+
     fn render_pixel(&mut self) {
         let x = self.dot.saturating_sub(1) as usize; // one dot offset
         let y = self.scanline as usize;
@@ -295,9 +359,16 @@ impl Clock for Ppu {
         self.cycle += 1;
 
         match self.scanline {
-            0..=239 | 261 => self.tick_background(),
+            0..=239 | 261 => {
+                if self.scanline == 261 && self.dot == 1 {
+                    self.status.clear();
+                }
+
+                self.tick_background();
+                self.tick_sprite();
+            }
             241 if self.dot == 1 => {
-                self.status.update(StatusFlag::V, true);
+                self.status.set_vblank();
                 self.nmi = self.ctrl.generate_nmi().then_some(true);
             }
             _ => {}

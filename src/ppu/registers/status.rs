@@ -44,11 +44,27 @@ impl StatusRegister {
         self.contains(StatusFlag::S)
     }
 
+    pub fn set_vblank(&mut self) {
+        self.update(StatusFlag::V, true);
+    }
+
+    pub fn clear_vblank(&mut self) {
+        self.update(StatusFlag::V, false);
+    }
+
+    pub fn set_sprite_overflow(&mut self) {
+        self.update(StatusFlag::O, true);
+    }
+
+    pub fn set_sprite_zero_hit(&mut self) {
+        self.update(StatusFlag::S, true);
+    }
+
     pub fn is_vblank(&self) -> bool {
         self.contains(StatusFlag::V)
     }
 
-    pub fn update(&mut self, flag: StatusFlag, state: bool) {
+    fn update(&mut self, flag: StatusFlag, state: bool) {
         self.0.update(flag as u8, state);
     }
 

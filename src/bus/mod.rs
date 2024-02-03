@@ -62,17 +62,18 @@ impl MainBus {
     // https://www.nesdev.org/wiki/DMA#OAM_DMA
     pub fn dma_cycle(&mut self, state: &mut DmaState) -> bool {
         if let Some(buffer) = state.buffer {
+            println!("buffer: {:?}", buffer);
             let address = state.current_page;
             self.ppu.write_oam(address, buffer); // put
             state.current_page = address.wrapping_add(1);
             state.buffer.take();
+            state.current_page == 0x00
         } else {
             let address = state.get_ram_address();
             let value = self.read_u8(address); // get
             state.buffer = Some(value);
+            false
         }
-
-        state.current_page == 0x00
     }
 
     pub fn is_vblank(&self) -> bool {
