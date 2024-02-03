@@ -5,6 +5,7 @@
 mod frame;
 mod palette;
 mod registers;
+mod sprite;
 
 use crate::{
     bus::{Bus, PpuBus},
@@ -12,6 +13,8 @@ use crate::{
     ppu::{frame::Frame, palette::NES_PALETTE, registers::*},
     utils::{BitFlag, BitPlane, Clock},
 };
+
+use self::sprite::Sprite;
 
 const PRIMARY_OAM_SIZE: usize = 256;
 const SECONDARY_OAM_SIZE: usize = 32;
@@ -46,6 +49,8 @@ pub struct Ppu {
     primary_oam_index: u8,
     secondary_oam_index: u8,
     oam_index_overflow: bool,
+    sp_pattern_shift: [BitPlane<u16>; 8],
+    sprite_buffer: Sprite,
 }
 
 impl Ppu {
@@ -79,6 +84,8 @@ impl Ppu {
             primary_oam_index: 0,
             secondary_oam_index: 0,
             oam_index_overflow: false,
+            sp_pattern_shift: [BitPlane::default(); 8],
+            sprite_buffer: Sprite::default(),
         }
     }
 }
@@ -273,10 +280,6 @@ impl Ppu {
     }
 
     fn tick_sprite(&mut self) {
-        if self.scanline == 261 {
-            return;
-        }
-
         match self.dot {
             1..=64 => {
                 if self.dot == 1 {
@@ -302,9 +305,7 @@ impl Ppu {
                     self.evaluate_sprite();
                 }
             }
-            257..=320 => {
-                // sprite fetch
-            }
+            257..=320 => self.fetch_sprite(),
             _ => {}
         }
     }
@@ -329,6 +330,33 @@ impl Ppu {
         let (index, overflow) = self.primary_oam_index.overflowing_add(4);
         self.primary_oam_index = index;
         self.oam_index_overflow |= overflow;
+    }
+
+    fn fetch_sprite(&mut self) {
+        if self.dot == 257 {
+            self.secondary_oam_index = 0;
+        }
+
+        let cycle = (self.dot - 257) % 8;
+        let oam_value = self.secondary_oam[self.secondary_oam_index as usize];
+
+        match cycle {
+            0 => self.sprite_buffer.y = oam_value,
+            1 => self.sprite_buffer.tile = oam_value,
+            2 => self.sprite_buffer.attribute = oam_value,
+            3 => self.sprite_buffer.x = oam_value,
+            _ => {
+                self.sprite_buffer.x = oam_value;
+
+                if self.sprite_buffer.y != 0xFF {
+                    todo!()
+                }
+            }
+        }
+
+        if cycle < 4 && self.secondary_oam_index < 31 {
+            self.secondary_oam_index += 1;
+        }
     }
 
     fn render_pixel(&mut self) {
@@ -364,8 +392,11 @@ impl Clock for Ppu {
                     self.status.clear();
                 }
 
+                if self.scanline != 261 {
+                    self.tick_sprite();
+                }
+
                 self.tick_background();
-                self.tick_sprite();
             }
             241 if self.dot == 1 => {
                 self.status.set_vblank();

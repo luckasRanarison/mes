@@ -46,7 +46,7 @@ where
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct BitPlane<T> {
     pub low: T,
     pub high: T,
