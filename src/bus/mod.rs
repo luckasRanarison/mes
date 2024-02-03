@@ -62,7 +62,6 @@ impl MainBus {
     // https://www.nesdev.org/wiki/DMA#OAM_DMA
     pub fn dma_cycle(&mut self, state: &mut DmaState) -> bool {
         if let Some(buffer) = state.buffer {
-            println!("buffer: {:?}", buffer);
             let address = state.current_page;
             self.ppu.write_oam(address, buffer); // put
             state.current_page = address.wrapping_add(1);

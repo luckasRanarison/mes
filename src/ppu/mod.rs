@@ -39,7 +39,7 @@ pub struct Ppu {
     scanline: u16,
     frame: Frame,
     odd_frame: bool,
-    address: u16,
+    bg_address: u16,
     bg_pattern_id: u8,
     bg_palette_id: u8,
     bg_pattern: BitPlane<u8>,
@@ -49,7 +49,10 @@ pub struct Ppu {
     primary_oam_index: u8,
     secondary_oam_index: u8,
     oam_index_overflow: bool,
-    sp_pattern_shift: [BitPlane<u16>; 8],
+    sp_address: u16,
+    sp_pattern_shift: [BitPlane<u8>; 8],
+    sp_palette_shift: [u8; 8],
+    sp_offset_shift: [u8; 8],
     sprite_buffer: Sprite,
 }
 
@@ -74,7 +77,7 @@ impl Ppu {
             scanline: 0,
             frame: Frame::default(),
             odd_frame: false,
-            address: 0,
+            bg_address: 0,
             bg_pattern_id: 0,
             bg_palette_id: 0,
             bg_pattern: BitPlane::default(),
@@ -84,7 +87,10 @@ impl Ppu {
             primary_oam_index: 0,
             secondary_oam_index: 0,
             oam_index_overflow: false,
+            sp_address: 0,
             sp_pattern_shift: [BitPlane::default(); 8],
+            sp_palette_shift: [0; 8],
+            sp_offset_shift: [0; 8],
             sprite_buffer: Sprite::default(),
         }
     }
@@ -225,9 +231,9 @@ impl Ppu {
                     self.v_addr.set_y(self.t_addr)
                 }
             }
-            337 | 339 => self.address = self.v_addr.get_nametable_address(),
+            337 | 339 => self.bg_address = self.v_addr.get_nametable_address(),
             338 | 340 => {
-                self.bg_pattern_id = self.bus.read_u8(self.address);
+                self.bg_pattern_id = self.bus.read_u8(self.bg_address);
 
                 if self.dot == 340 && self.scanline == 261 && self.odd_frame {
                     self.dot += 1;
@@ -241,12 +247,12 @@ impl Ppu {
         match self.dot % 8 {
             1 => {
                 self.load_shifters();
-                self.address = self.v_addr.get_nametable_address();
+                self.bg_address = self.v_addr.get_nametable_address();
             }
-            2 => self.bg_pattern_id = self.bus.read_u8(self.address),
-            3 => self.address = self.v_addr.get_attribute_address(),
+            2 => self.bg_pattern_id = self.bus.read_u8(self.bg_address),
+            3 => self.bg_address = self.v_addr.get_attribute_address(),
             4 => {
-                self.bg_palette_id = self.bus.read_u8(self.address);
+                self.bg_palette_id = self.bus.read_u8(self.bg_address);
 
                 if self.v_addr.get_coarse_y() & 2 > 0 {
                     self.bg_palette_id >>= 4;
@@ -260,12 +266,12 @@ impl Ppu {
             5 => {
                 let nametable = self.ctrl.get_background_pattern_table_address();
                 let fine_y = self.v_addr.get_fine_y() as u16;
-                self.address = nametable + (self.bg_pattern_id as u16) * 16 + fine_y + 0;
+                self.bg_address = nametable + (self.bg_pattern_id as u16) * 16 + fine_y + 0;
             }
-            6 => self.bg_pattern.low = self.bus.read_u8(self.address),
-            7 => self.address += 8,
+            6 => self.bg_pattern.low = self.bus.read_u8(self.bg_address),
+            7 => self.bg_address += 8,
             0 => {
-                self.bg_pattern.high = self.bus.read_u8(self.address);
+                self.bg_pattern.high = self.bus.read_u8(self.bg_address);
 
                 if self.mask.is_rendering() {
                     if self.dot == 256 {
@@ -338,20 +344,38 @@ impl Ppu {
         }
 
         let cycle = (self.dot - 257) % 8;
+        let index = (self.dot as usize - 257) / 8;
         let oam_value = self.secondary_oam[self.secondary_oam_index as usize];
 
         match cycle {
             0 => self.sprite_buffer.y = oam_value,
-            1 => self.sprite_buffer.tile = oam_value,
-            2 => self.sprite_buffer.attribute = oam_value,
-            3 => self.sprite_buffer.x = oam_value,
-            _ => {
-                self.sprite_buffer.x = oam_value;
+            1 => {
+                self.sprite_buffer.tile = oam_value;
 
                 if self.sprite_buffer.y != 0xFF {
-                    todo!()
+                    let height = self.ctrl.get_sprite_height();
+                    let base_address = self.ctrl.get_sprite_pattern_table_address();
+                    let address = self.sprite_buffer.get_tile_address(height, base_address);
+                    let pattern_low = self.bus.read_u8(address);
+                    self.sp_address = address;
+                    self.sp_pattern_shift[index].low = pattern_low;
                 }
             }
+            2 => {
+                self.sprite_buffer.attribute = oam_value;
+                self.sp_palette_shift[index] = self.sprite_buffer.get_palette();
+            }
+            3 => {
+                self.sprite_buffer.x = oam_value;
+                self.sp_offset_shift[index] = self.sprite_buffer.x;
+
+                if self.sprite_buffer.y != 0xFF {
+                    let address = self.sp_address + 8;
+                    let pattern_high = self.bus.read_u8(address);
+                    self.sp_pattern_shift[index].high = pattern_high;
+                }
+            }
+            _ => self.sprite_buffer.x = oam_value,
         }
 
         if cycle < 4 && self.secondary_oam_index < 31 {

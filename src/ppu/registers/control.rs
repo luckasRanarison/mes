@@ -70,7 +70,7 @@ impl ControlRegister {
         }
     }
 
-    pub fn get_sprite_height(&self) -> u16 {
+    pub fn get_sprite_height(&self) -> u8 {
         match self.contains(ControlFlag::H) {
             true => 16,
             false => 8,
