@@ -1,10 +1,10 @@
 pub enum ControllerButton {
-    A,
-    B,
-    Select,
-    Start,
-    Up,
-    Down,
-    Left,
     Right,
+    Left,
+    Down,
+    Up,
+    Start,
+    Select,
+    B,
+    A,
 }
