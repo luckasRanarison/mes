@@ -5,7 +5,6 @@
 mod frame;
 mod palette;
 mod registers;
-mod sprite;
 
 use crate::{
     bus::{Bus, PpuBus},
@@ -13,8 +12,6 @@ use crate::{
     ppu::{frame::Frame, palette::NES_PALETTE, registers::*},
     utils::{BitFlag, BitPlane, Clock},
 };
-
-use self::sprite::Sprite;
 
 const PRIMARY_OAM_SIZE: usize = 256;
 const SECONDARY_OAM_SIZE: usize = 32;
@@ -51,9 +48,8 @@ pub struct Ppu {
     oam_index_overflow: bool,
     sp_address: u16,
     sp_pattern_shift: [BitPlane<u8>; 8],
-    sp_palette_shift: [u8; 8],
+    sp_attribute_shift: [u8; 8],
     sp_offset_shift: [u8; 8],
-    sprite_buffer: Sprite,
 }
 
 impl Ppu {
@@ -89,9 +85,8 @@ impl Ppu {
             oam_index_overflow: false,
             sp_address: 0,
             sp_pattern_shift: [BitPlane::default(); 8],
-            sp_palette_shift: [0; 8],
+            sp_attribute_shift: [0; 8],
             sp_offset_shift: [0; 8],
-            sprite_buffer: Sprite::default(),
         }
     }
 }
@@ -286,12 +281,17 @@ impl Ppu {
     }
 
     fn tick_sprite(&mut self) {
+        if self.dot == 1 {
+            self.secondary_oam_index = 0;
+        }
+
+        if self.dot == 65 {
+            self.primary_oam_index = 0;
+            self.secondary_oam_index = 0;
+        }
+
         match self.dot {
             1..=64 => {
-                if self.dot == 1 {
-                    self.secondary_oam_index = 0;
-                }
-
                 if self.dot % 2 == 0 {
                     self.secondary_oam[self.secondary_oam_index as usize] = self.oam_buffer;
                     self.secondary_oam_index += 1;
@@ -300,11 +300,6 @@ impl Ppu {
                 }
             }
             65..=256 => {
-                if self.dot == 65 {
-                    self.primary_oam_index = 0;
-                    self.secondary_oam_index = 0;
-                }
-
                 if self.dot % 2 == 1 {
                     self.oam_buffer = self.primary_oam[self.primary_oam_index as usize];
                 } else {
@@ -348,34 +343,28 @@ impl Ppu {
         let oam_value = self.secondary_oam[self.secondary_oam_index as usize];
 
         match cycle {
-            0 => self.sprite_buffer.y = oam_value,
-            1 => {
-                self.sprite_buffer.tile = oam_value;
-
-                if self.sprite_buffer.y != 0xFF {
-                    let height = self.ctrl.get_sprite_height();
-                    let base_address = self.ctrl.get_sprite_pattern_table_address();
-                    let address = self.sprite_buffer.get_tile_address(height, base_address);
-                    let pattern_low = self.bus.read_u8(address);
-                    self.sp_address = address;
-                    self.sp_pattern_shift[index].low = pattern_low;
-                }
+            0 => self.oam_buffer = oam_value, // Y coordinate
+            1 if self.oam_buffer != 0xFF => {
+                let height = self.ctrl.get_sprite_height();
+                let base_address = self.ctrl.get_sprite_pattern_table_address();
+                let address = if height == 8 {
+                    base_address + (16 * oam_value as u16)
+                } else {
+                    let bank = 0x1000 * oam_value.get(0) as u16;
+                    bank + 32 * (oam_value >> 1) as u16
+                };
+                let pattern_low = self.bus.read_u8(address);
+                self.sp_address = address;
+                self.sp_pattern_shift[index].low = pattern_low;
             }
-            2 => {
-                self.sprite_buffer.attribute = oam_value;
-                self.sp_palette_shift[index] = self.sprite_buffer.get_palette();
+            2 if self.oam_buffer != 0xFF => self.sp_attribute_shift[index] = oam_value,
+            3 if self.oam_buffer != 0xFF => {
+                let address = self.sp_address + 8;
+                let pattern_high = self.bus.read_u8(address);
+                self.sp_pattern_shift[index].high = pattern_high;
+                self.sp_offset_shift[index] = oam_value;
             }
-            3 => {
-                self.sprite_buffer.x = oam_value;
-                self.sp_offset_shift[index] = self.sprite_buffer.x;
-
-                if self.sprite_buffer.y != 0xFF {
-                    let address = self.sp_address + 8;
-                    let pattern_high = self.bus.read_u8(address);
-                    self.sp_pattern_shift[index].high = pattern_high;
-                }
-            }
-            _ => self.sprite_buffer.x = oam_value,
+            _ => {} // read X coordinate 4 times
         }
 
         if cycle < 4 && self.secondary_oam_index < 31 {
