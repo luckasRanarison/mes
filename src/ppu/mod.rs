@@ -9,14 +9,16 @@ use crate::{
     bus::{Bus, PpuBus},
     mappers::MapperRef,
     ppu::{frame::Frame, palette::NES_PALETTE, registers::*},
-    utils::{BitPlane, Clock},
+    utils::{BitFlag, BitPlane, Clock},
 };
 
-const OAM_SIZE: usize = 256;
+const PRIMARY_OAM_SIZE: usize = 256;
+const SECONDARY_OAM_SIZE: usize = 32;
 
 #[derive(Debug)]
 pub struct Ppu {
-    oam_data: [u8; OAM_SIZE],
+    primary_oam: [u8; PRIMARY_OAM_SIZE],
+    secondary_oam: [u8; SECONDARY_OAM_SIZE],
     vram_buffer: u8,
     oam_addr: u8,
     ctrl: ControlRegister,
@@ -31,11 +33,11 @@ pub struct Ppu {
     dot: u16,
     scanline: u16,
     address: u16,
-    tile_id: u8,
-    tile_attribute: u8,
-    bg_tile: BitPlane<u8>,
-    bg_shifter: BitPlane<u16>,
-    pal_shifter: BitPlane<u16>,
+    bg_pattern_id: u8,
+    bg_palette_id: u8,
+    bg_pattern: BitPlane<u8>,
+    bg_pattern_shift: BitPlane<u16>,
+    bg_palette_shift: BitPlane<u16>,
     odd_frame: bool,
     frame: Frame,
     bus: PpuBus,
@@ -44,7 +46,8 @@ pub struct Ppu {
 impl Ppu {
     pub fn new(mapper: MapperRef) -> Self {
         Self {
-            oam_data: [0; OAM_SIZE],
+            primary_oam: [0; PRIMARY_OAM_SIZE],
+            secondary_oam: [0; SECONDARY_OAM_SIZE],
             vram_buffer: 0,
             oam_addr: 0,
             ctrl: ControlRegister::default(),
@@ -59,11 +62,11 @@ impl Ppu {
             dot: 0,
             scanline: 0,
             address: 0,
-            tile_id: 0,
-            tile_attribute: 0,
-            bg_tile: BitPlane::default(),
-            bg_shifter: BitPlane::default(),
-            pal_shifter: BitPlane::default(),
+            bg_pattern_id: 0,
+            bg_palette_id: 0,
+            bg_pattern: BitPlane::default(),
+            bg_pattern_shift: BitPlane::default(),
+            bg_palette_shift: BitPlane::default(),
             odd_frame: false,
             frame: Frame::default(),
             bus: PpuBus::new(mapper),
@@ -82,7 +85,7 @@ impl Ppu {
 
     pub fn read_oam_data(&self) -> u8 {
         let address = self.oam_addr as usize;
-        self.oam_data[address]
+        self.primary_oam[address]
     }
 
     pub fn read_data(&mut self) -> u8 {
@@ -123,7 +126,7 @@ impl Ppu {
     }
 
     pub fn write_oam(&mut self, address: u8, value: u8) {
-        self.oam_data[address as usize] = value;
+        self.primary_oam[address as usize] = value;
     }
 
     pub fn write_scroll(&mut self, value: u8) {
@@ -173,27 +176,21 @@ impl Ppu {
     }
 
     fn load_shifters(&mut self) {
-        self.bg_shifter.low = (self.bg_shifter.low & 0xFF00) | self.bg_tile.low as u16;
-        self.bg_shifter.high = (self.bg_shifter.high & 0xFF00) | self.bg_tile.high as u16;
-        self.pal_shifter.low = (self.pal_shifter.low & 0xFF00)
-            | if self.tile_attribute & 0b01 > 0 {
-                0xFF
-            } else {
-                0x00
-            };
-        self.pal_shifter.high = (self.pal_shifter.high & 0xFF00)
-            | if self.tile_attribute & 0b10 > 0 {
-                0xFF
-            } else {
-                0x00
-            };
+        self.bg_pattern_shift.low =
+            (self.bg_pattern_shift.low & 0xFF00) | self.bg_pattern.low as u16;
+        self.bg_pattern_shift.high =
+            (self.bg_pattern_shift.high & 0xFF00) | self.bg_pattern.high as u16;
+        self.bg_palette_shift.low =
+            (self.bg_palette_shift.low & 0xFF00) | (self.bg_palette_id as u16 & 0b01) * 0xFF;
+        self.bg_palette_shift.high =
+            (self.bg_palette_shift.high & 0xFF00) | (self.bg_palette_id as u16 & 0b10) * 0xFF;
     }
 
     fn update_shifters(&mut self) {
-        self.bg_shifter.low <<= 1;
-        self.bg_shifter.high <<= 1;
-        self.pal_shifter.low <<= 1;
-        self.pal_shifter.high <<= 1;
+        self.bg_pattern_shift.low <<= 1;
+        self.bg_pattern_shift.high <<= 1;
+        self.bg_palette_shift.low <<= 1;
+        self.bg_palette_shift.high <<= 1;
     }
 
     fn tick_background(&mut self) {
@@ -214,7 +211,7 @@ impl Ppu {
             }
             337 | 339 => self.address = self.v_addr.get_nametable_address(),
             338 | 340 => {
-                self.tile_id = self.bus.read_u8(self.address);
+                self.bg_pattern_id = self.bus.read_u8(self.address);
 
                 if self.dot == 340 && self.scanline == 261 && self.odd_frame {
                     self.dot += 1;
@@ -234,29 +231,29 @@ impl Ppu {
                     self.status.clear();
                 }
             }
-            2 => self.tile_id = self.bus.read_u8(self.address),
+            2 => self.bg_pattern_id = self.bus.read_u8(self.address),
             3 => self.address = self.v_addr.get_attribute_address(),
             4 => {
-                self.tile_attribute = self.bus.read_u8(self.address);
+                self.bg_palette_id = self.bus.read_u8(self.address);
 
                 if self.v_addr.get_coarse_y() & 2 > 0 {
-                    self.tile_attribute >>= 4;
+                    self.bg_palette_id >>= 4;
                 }
                 if self.v_addr.get_coarse_x() & 2 > 0 {
-                    self.tile_attribute >>= 2;
+                    self.bg_palette_id >>= 2;
                 }
 
-                self.tile_attribute &= 0b11;
+                self.bg_palette_id &= 0b11;
             }
             5 => {
                 let nametable = self.ctrl.get_background_pattern_table_address();
                 let fine_y = self.v_addr.get_fine_y() as u16;
-                self.address = nametable + (self.tile_id as u16) * 16 + fine_y + 0;
+                self.address = nametable + (self.bg_pattern_id as u16) * 16 + fine_y + 0;
             }
-            6 => self.bg_tile.low = self.bus.read_u8(self.address),
+            6 => self.bg_pattern.low = self.bus.read_u8(self.address),
             7 => self.address += 8,
             0 => {
-                self.bg_tile.high = self.bus.read_u8(self.address);
+                self.bg_pattern.high = self.bus.read_u8(self.address);
 
                 if self.mask.is_rendering() {
                     if self.dot == 256 {
@@ -275,18 +272,15 @@ impl Ppu {
         let y = self.scanline as usize;
 
         if x < 256 && y < 240 {
-            let mask = 0x8000 >> self.fine_x;
-            let low_plane = self.bg_shifter.low;
-            let low_pixel = if low_plane & mask > 0 { 1 } else { 0 };
-            let high_plane = self.bg_shifter.high;
-            let high_pixel = if high_plane & mask > 0 { 2 } else { 0 };
-            let pixel = high_pixel + low_pixel;
+            let offset = 15 - self.fine_x as u16;
+            let low_pixel = self.bg_pattern_shift.low.get(offset);
+            let high_pixel = self.bg_pattern_shift.high.get(offset);
+            let pixel = (high_pixel << 1) + low_pixel;
 
-            let low_plane = self.pal_shifter.low;
-            let low_pal = if low_plane & mask > 0 { 1 } else { 0 };
-            let high_plane = self.pal_shifter.high;
-            let high_pal = if high_plane & mask > 0 { 2 } else { 0 };
-            let palette = high_pal + low_pal;
+            let low_palette = self.bg_palette_shift.low.get(offset);
+            let high_palette = self.bg_palette_shift.high.get(offset);
+            let palette = (high_palette << 1) + low_palette;
+
             let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
             let palette_index = self.bus.read_u8(palette_address);
             let rgb = NES_PALETTE[palette_index as usize];
@@ -343,8 +337,8 @@ mod tests {
         ppu.write_oam_data(0x21);
 
         assert_eq!(ppu.oam_addr, 0x11);
-        assert_eq!(ppu.oam_data[0x0F], 0x20);
-        assert_eq!(ppu.oam_data[0x10], 0x21);
+        assert_eq!(ppu.primary_oam[0x0F], 0x20);
+        assert_eq!(ppu.primary_oam[0x10], 0x21);
     }
 
     #[test]

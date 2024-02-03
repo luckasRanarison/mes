@@ -1,3 +1,5 @@
+use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Shl, Shr};
+
 pub trait BitFlag<T> {
     fn get(&self, flag: T) -> T;
     fn contains(&self, flag: T) -> bool;
@@ -6,24 +8,36 @@ pub trait BitFlag<T> {
     fn update(&mut self, flag: T, cond: bool);
 }
 
-impl BitFlag<u8> for u8 {
-    fn get(&self, flag: u8) -> u8 {
-        self >> flag & 1
+impl<T> BitFlag<T> for T
+where
+    T: Clone
+        + Copy
+        + PartialEq
+        + Shr<T, Output = T>
+        + Shl<T, Output = T>
+        + BitAnd<T, Output = T>
+        + BitAndAssign<T>
+        + BitOrAssign<T>
+        + Not<Output = T>
+        + From<u8>,
+{
+    fn get(&self, flag: T) -> T {
+        *self >> flag & T::from(1)
     }
 
-    fn contains(&self, flag: u8) -> bool {
-        self.get(flag) == 1
+    fn contains(&self, flag: T) -> bool {
+        self.get(flag) == T::from(1)
     }
 
-    fn set(&mut self, flag: u8) {
-        *self |= 1 << flag;
+    fn set(&mut self, flag: T) {
+        *self |= T::from(1) << flag;
     }
 
-    fn clear(&mut self, flag: u8) {
-        *self &= !(1 << flag);
+    fn clear(&mut self, flag: T) {
+        *self &= !(T::from(1) << flag);
     }
 
-    fn update(&mut self, flag: u8, cond: bool) {
+    fn update(&mut self, flag: T, cond: bool) {
         if cond {
             self.set(flag);
         } else {
