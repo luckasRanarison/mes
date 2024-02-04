@@ -332,7 +332,7 @@ impl Ppu {
 
         let (index, overflow) = self.primary_oam_index.overflowing_add(4);
         self.primary_oam_index = index;
-        self.oam_index_overflow |= overflow;
+        self.oam_index_overflow |= overflow; // TODO: sprite overflow bug
     }
 
     fn fetch_sprite(&mut self) {
@@ -370,7 +370,7 @@ impl Ppu {
         let height = self.ctrl.get_sprite_height();
         let pattern_table = self.ctrl.get_sprite_pattern_table_address();
         let base_address = match height {
-            8 => pattern_table + tile as u16,
+            8 => pattern_table + 16 * tile as u16,
             _ => 0x1000 * tile.get(0) as u16 + (16 * (tile >> 1) as u16),
         };
         let flip_vertical = attribute.contains(7);
@@ -390,11 +390,11 @@ impl Ppu {
 
         if x < 256 && y < 240 {
             let (bg_pixel, bg_palette) = self.get_background_pixel();
-            let (fg_pixel, fg_palette, bg_priority) = self.get_sprite_pixel();
-            let (pixel, palette) = match (bg_pixel, fg_pixel, bg_priority) {
+            let (sp_pixel, sp_palette, sp_priority) = self.get_sprite_pixel();
+            let (pixel, palette) = match (bg_pixel, sp_pixel, sp_priority) {
                 (_, 0, _) => (bg_pixel, bg_palette),
-                (_, _, true) => (bg_pixel, bg_palette),
-                _ => (fg_pixel, fg_palette),
+                (_, _, true) => (sp_pixel, sp_palette),
+                _ => (bg_pixel, bg_pixel),
             };
             let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
             let palette_index = self.bus.read_u8(palette_address);
@@ -421,7 +421,7 @@ impl Ppu {
         for i in 0..8 {
             if self.sp_offset_shift[i] == 0 {
                 let attribute = self.sp_attribute_shift[i];
-                let fg_priority = attribute.contains(5);
+                let sp_priority = !attribute.contains(5);
                 let palette = (attribute & 0b11) * 4;
                 let horizontal_flip = attribute.contains(6);
                 let pixel_index = if horizontal_flip { 0 } else { 7 };
@@ -437,7 +437,7 @@ impl Ppu {
                     self.sp_pattern_shift[i].high <<= 1;
                 }
 
-                return (pixel, palette, fg_priority);
+                return (pixel, palette, sp_priority);
             } else {
                 self.sp_offset_shift[i] -= 1;
             }
