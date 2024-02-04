@@ -293,7 +293,7 @@ impl Ppu {
         }
 
         match self.dot {
-            1..=64 => {
+            1..=64 if self.scanline != 261 => {
                 if self.dot % 2 == 0 {
                     self.secondary_oam[self.secondary_oam_index as usize] = self.oam_buffer;
                     self.secondary_oam_index += 1;
@@ -301,7 +301,7 @@ impl Ppu {
                     self.oam_buffer = 0xFF;
                 }
             }
-            65..=256 => {
+            65..=256 if self.scanline != 261 => {
                 if self.dot % 2 == 1 {
                     self.oam_buffer = self.primary_oam[self.primary_oam_index as usize];
                 } else {
@@ -389,21 +389,56 @@ impl Ppu {
         let y = self.scanline as usize;
 
         if x < 256 && y < 240 {
-            let offset = 15 - self.fine_x as u16;
-            let low_pixel = self.bg_pattern_shift.low.get(offset);
-            let high_pixel = self.bg_pattern_shift.high.get(offset);
-            let pixel = (high_pixel << 1) + low_pixel;
-
-            let low_palette = self.bg_palette_shift.low.get(offset);
-            let high_palette = self.bg_palette_shift.high.get(offset);
-            let palette = (high_palette << 1) + low_palette;
-
+            // let (pixel, palette) = self.get_background_pixel();
+            let (pixel, palette, _) = self.get_sprite_pixel();
             let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
             let palette_index = self.bus.read_u8(palette_address);
             let rgb = NES_PALETTE[palette_index as usize];
 
             self.frame.set_pixel(x, y, rgb);
         }
+    }
+
+    fn get_background_pixel(&self) -> (u8, u8) {
+        let offset = 15 - self.fine_x as u16;
+        let low_pixel = self.bg_pattern_shift.low.get(offset);
+        let high_pixel = self.bg_pattern_shift.high.get(offset);
+        let pixel = (high_pixel << 1) + low_pixel;
+
+        let low_palette = self.bg_palette_shift.low.get(offset);
+        let high_palette = self.bg_palette_shift.high.get(offset);
+        let palette = (high_palette << 1) + low_palette;
+
+        (pixel as u8, palette as u8)
+    }
+
+    fn get_sprite_pixel(&mut self) -> (u8, u8, bool) {
+        for i in 0..8 {
+            if self.sp_offset_shift[i] == 0 {
+                let attribute = self.sp_attribute_shift[i];
+                let fg_priority = attribute.contains(5);
+                let palette = (attribute & 0b11) * 4;
+                let horizontal_flip = attribute.contains(6);
+                let pixel_index = if horizontal_flip { 0 } else { 7 };
+                let pixel_low = self.sp_pattern_shift[i].low.get(pixel_index);
+                let pixel_high = self.sp_pattern_shift[i].high.get(pixel_index);
+                let pixel = (pixel_high << 1) | pixel_low;
+
+                if horizontal_flip {
+                    self.sp_pattern_shift[i].low >>= 1;
+                    self.sp_pattern_shift[i].high >>= 1;
+                } else {
+                    self.sp_pattern_shift[i].low <<= 1;
+                    self.sp_pattern_shift[i].high <<= 1;
+                }
+
+                return (pixel, palette, fg_priority);
+            } else {
+                self.sp_offset_shift[i] -= 1;
+            }
+        }
+
+        (0, 0, false)
     }
 }
 
@@ -417,10 +452,7 @@ impl Clock for Ppu {
                     self.status.clear();
                 }
 
-                if self.scanline != 261 {
-                    self.tick_sprite();
-                }
-
+                self.tick_sprite();
                 self.tick_background();
             }
             241 if self.dot == 1 => {
