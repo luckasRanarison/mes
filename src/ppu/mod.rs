@@ -417,9 +417,10 @@ impl Ppu {
                 .unwrap_or_default();
 
             let (pixel, palette) = match (bg_pixel, sp_pixel, sp_priority) {
+                (0, 0, _) => (0, 0),
                 (_, 0, _) => (bg_pixel, bg_palette),
                 (_, _, true) => (sp_pixel, sp_palette),
-                _ => (bg_pixel, bg_pixel),
+                _ => (bg_pixel, bg_palette),
             };
 
             let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
@@ -448,7 +449,7 @@ impl Ppu {
             if self.sp_offset_shift[i] == 0 {
                 let attribute = self.sp_attribute_shift[i];
                 let sp_priority = !attribute.contains(5);
-                let palette = (attribute & 0b11) * 4;
+                let palette = (attribute & 0b11) + 4; // sprite palette offset
                 let pixel_low = self.sp_pattern_shift[i].low.get(7);
                 let pixel_high = self.sp_pattern_shift[i].high.get(7);
                 let pixel = (pixel_high << 1) | pixel_low;

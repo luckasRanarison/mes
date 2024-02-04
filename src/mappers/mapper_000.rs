@@ -32,7 +32,7 @@ impl Mapper for NRom {
     fn write(&mut self, address: u16, value: u8) {
         match address {
             0x6000..=0x7FFF => self.cartridge.prg_ram[address as usize - 0x6000] = value,
-            _ => panic!("Trying to write to an invalid address: 0x{:x}", address),
+            _ => {}
         };
     }
 
