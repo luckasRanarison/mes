@@ -389,8 +389,13 @@ impl Ppu {
         let y = self.scanline as usize;
 
         if x < 256 && y < 240 {
-            // let (pixel, palette) = self.get_background_pixel();
-            let (pixel, palette, _) = self.get_sprite_pixel();
+            let (bg_pixel, bg_palette) = self.get_background_pixel();
+            let (fg_pixel, fg_palette, bg_priority) = self.get_sprite_pixel();
+            let (pixel, palette) = match (bg_pixel, fg_pixel, bg_priority) {
+                (_, 0, _) => (bg_pixel, bg_palette),
+                (_, _, true) => (bg_pixel, bg_palette),
+                _ => (fg_pixel, fg_palette),
+            };
             let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
             let palette_index = self.bus.read_u8(palette_address);
             let rgb = NES_PALETTE[palette_index as usize];
