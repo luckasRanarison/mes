@@ -348,12 +348,22 @@ impl Ppu {
         match cycle {
             0..=3 => self.sp_buffer[cycle as usize] = oam_value,
             4 if y != 0xFF => self.sp_address = self.get_sprite_pattern_address(),
+            4 => {
+                // clear shifters to avoid artifacts
+                self.sp_pattern_shift[index].low = 0;
+                self.sp_pattern_shift[index].high = 0;
+            }
             5 if y != 0xFF => self.sp_pattern_shift[index].low = self.bus.read_u8(self.sp_address),
             6 if y != 0xFF => self.sp_address += 8,
             7 if y != 0xFF => {
+                let attribute = self.sp_buffer[2];
                 self.sp_pattern_shift[index].high = self.bus.read_u8(self.sp_address);
-                self.sp_attribute_shift[index] = self.sp_buffer[2];
+                self.sp_attribute_shift[index] = attribute;
                 self.sp_offset_shift[index] = self.sp_buffer[3]; // X coordinate
+
+                if attribute.contains(6) {
+                    self.reverse_sprite_pattern_bits(index); // reverse horizontally
+                }
             }
             _ => {}
         }
@@ -361,6 +371,11 @@ impl Ppu {
         if cycle < 4 && self.secondary_oam_index < 31 {
             self.secondary_oam_index += 1;
         }
+    }
+
+    fn reverse_sprite_pattern_bits(&mut self, index: usize) {
+        self.sp_pattern_shift[index].low = self.sp_pattern_shift[index].low.reverse_bits();
+        self.sp_pattern_shift[index].high = self.sp_pattern_shift[index].high.reverse_bits();
     }
 
     fn get_sprite_pattern_address(&self) -> u16 {
@@ -389,13 +404,24 @@ impl Ppu {
         let y = self.scanline as usize;
 
         if x < 256 && y < 240 {
-            let (bg_pixel, bg_palette) = self.get_background_pixel();
-            let (sp_pixel, sp_palette, sp_priority) = self.get_sprite_pixel();
+            let (bg_pixel, bg_palette) = self
+                .mask
+                .show_background()
+                .then(|| self.get_background_pixel())
+                .unwrap_or_default();
+
+            let (sp_pixel, sp_palette, sp_priority) = self
+                .mask
+                .show_sprites()
+                .then(|| self.get_sprite_pixel())
+                .unwrap_or_default();
+
             let (pixel, palette) = match (bg_pixel, sp_pixel, sp_priority) {
                 (_, 0, _) => (bg_pixel, bg_palette),
                 (_, _, true) => (sp_pixel, sp_palette),
                 _ => (bg_pixel, bg_pixel),
             };
+
             let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
             let palette_index = self.bus.read_u8(palette_address);
             let rgb = NES_PALETTE[palette_index as usize];
@@ -423,19 +449,12 @@ impl Ppu {
                 let attribute = self.sp_attribute_shift[i];
                 let sp_priority = !attribute.contains(5);
                 let palette = (attribute & 0b11) * 4;
-                let horizontal_flip = attribute.contains(6);
-                let pixel_index = if horizontal_flip { 0 } else { 7 };
-                let pixel_low = self.sp_pattern_shift[i].low.get(pixel_index);
-                let pixel_high = self.sp_pattern_shift[i].high.get(pixel_index);
+                let pixel_low = self.sp_pattern_shift[i].low.get(7);
+                let pixel_high = self.sp_pattern_shift[i].high.get(7);
                 let pixel = (pixel_high << 1) | pixel_low;
 
-                if horizontal_flip {
-                    self.sp_pattern_shift[i].low >>= 1;
-                    self.sp_pattern_shift[i].high >>= 1;
-                } else {
-                    self.sp_pattern_shift[i].low <<= 1;
-                    self.sp_pattern_shift[i].high <<= 1;
-                }
+                self.sp_pattern_shift[i].low <<= 1;
+                self.sp_pattern_shift[i].high <<= 1;
 
                 return (pixel, palette, sp_priority);
             } else {
@@ -467,7 +486,6 @@ impl Clock for Ppu {
             _ => {}
         }
 
-        // WIP
         if self.mask.is_rendering() {
             self.render_pixel();
         }
