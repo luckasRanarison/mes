@@ -46,6 +46,7 @@ pub struct Ppu {
     primary_oam_index: u8,
     secondary_oam_index: u8,
     oam_index_overflow: bool,
+    sp_buffer: [u8; 4],
     sp_address: u16,
     sp_pattern_shift: [BitPlane<u8>; 8],
     sp_attribute_shift: [u8; 8],
@@ -83,6 +84,7 @@ impl Ppu {
             primary_oam_index: 0,
             secondary_oam_index: 0,
             oam_index_overflow: false,
+            sp_buffer: [0; 4],
             sp_address: 0,
             sp_pattern_shift: [BitPlane::default(); 8],
             sp_attribute_shift: [0; 8],
@@ -317,7 +319,7 @@ impl Ppu {
             let sprite_height = self.ctrl.get_sprite_height() as i16;
             let offset = self.scanline as i16 - sprite_y as i16;
 
-            if offset >= 0 || offset < sprite_height {
+            if offset >= 0 && offset < sprite_height {
                 let i = self.secondary_oam_index as usize;
                 let j = self.primary_oam_index as usize;
 
@@ -341,34 +343,44 @@ impl Ppu {
         let cycle = (self.dot - 257) % 8;
         let index = (self.dot as usize - 257) / 8;
         let oam_value = self.secondary_oam[self.secondary_oam_index as usize];
+        let y = self.sp_buffer[0];
 
         match cycle {
-            0 => self.oam_buffer = oam_value, // Y coordinate
-            1 if self.oam_buffer != 0xFF => {
-                let height = self.ctrl.get_sprite_height();
-                let base_address = self.ctrl.get_sprite_pattern_table_address();
-                let address = if height == 8 {
-                    base_address + (16 * oam_value as u16)
-                } else {
-                    let bank = 0x1000 * oam_value.get(0) as u16;
-                    bank + 32 * (oam_value >> 1) as u16
-                };
-                let pattern_low = self.bus.read_u8(address);
-                self.sp_address = address;
-                self.sp_pattern_shift[index].low = pattern_low;
+            0..=3 => self.sp_buffer[cycle as usize] = oam_value,
+            4 if y != 0xFF => self.sp_address = self.get_sprite_pattern_address(),
+            5 if y != 0xFF => self.sp_pattern_shift[index].low = self.bus.read_u8(self.sp_address),
+            6 if y != 0xFF => self.sp_address += 8,
+            7 if y != 0xFF => {
+                self.sp_pattern_shift[index].high = self.bus.read_u8(self.sp_address);
+                self.sp_attribute_shift[index] = self.sp_buffer[2];
+                self.sp_offset_shift[index] = self.sp_buffer[3]; // X coordinate
             }
-            2 if self.oam_buffer != 0xFF => self.sp_attribute_shift[index] = oam_value,
-            3 if self.oam_buffer != 0xFF => {
-                let address = self.sp_address + 8;
-                let pattern_high = self.bus.read_u8(address);
-                self.sp_pattern_shift[index].high = pattern_high;
-                self.sp_offset_shift[index] = oam_value;
-            }
-            _ => {} // read X coordinate 4 times
+            _ => {}
         }
 
         if cycle < 4 && self.secondary_oam_index < 31 {
             self.secondary_oam_index += 1;
+        }
+    }
+
+    fn get_sprite_pattern_address(&self) -> u16 {
+        let sprite_y = self.sp_buffer[0];
+        let tile = self.sp_buffer[1];
+        let attribute = self.sp_buffer[2];
+        let height = self.ctrl.get_sprite_height();
+        let pattern_table = self.ctrl.get_sprite_pattern_table_address();
+        let base_address = match height {
+            8 => pattern_table + tile as u16,
+            _ => 0x1000 * tile.get(0) as u16 + (16 * (tile >> 1) as u16),
+        };
+        let flip_vertical = attribute.contains(7);
+        let y = self.scanline - sprite_y as u16;
+        let address = base_address + y;
+
+        if flip_vertical {
+            7 - address
+        } else {
+            address
         }
     }
 
