@@ -43,15 +43,3 @@ impl Nes {
         self.cpu.bus_mut().set_controller_state(id, state);
     }
 }
-
-#[wasm_bindgen]
-pub enum ControllerButton {
-    Right,
-    Left,
-    Down,
-    Up,
-    Start,
-    Select,
-    B,
-    A,
-}
