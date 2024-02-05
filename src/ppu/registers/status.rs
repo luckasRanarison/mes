@@ -36,20 +36,8 @@ impl StatusRegister {
         self.0
     }
 
-    pub fn get_sprite_overflow(&self) -> bool {
-        self.contains(StatusFlag::O)
-    }
-
-    pub fn get_sprite_zero_hit(&self) -> bool {
-        self.contains(StatusFlag::S)
-    }
-
     pub fn set_vblank(&mut self) {
         self.update(StatusFlag::V, true);
-    }
-
-    pub fn clear_vblank(&mut self) {
-        self.update(StatusFlag::V, false);
     }
 
     pub fn set_sprite_overflow(&mut self) {
@@ -58,6 +46,10 @@ impl StatusRegister {
 
     pub fn set_sprite_zero_hit(&mut self) {
         self.update(StatusFlag::S, true);
+    }
+
+    pub fn clear_vblank(&mut self) {
+        self.update(StatusFlag::V, false);
     }
 
     pub fn is_vblank(&self) -> bool {

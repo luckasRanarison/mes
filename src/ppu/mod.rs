@@ -51,6 +51,8 @@ pub struct Ppu {
     sp_pattern_shift: [BitPlane<u8>; 8],
     sp_attribute_shift: [u8; 8],
     sp_offset_shift: [u8; 8],
+    sprite_zero_eval: bool,
+    sprite_zero_pixel: bool,
 }
 
 impl Ppu {
@@ -89,6 +91,8 @@ impl Ppu {
             sp_pattern_shift: [BitPlane::default(); 8],
             sp_attribute_shift: [0; 8],
             sp_offset_shift: [0; 8],
+            sprite_zero_eval: false,
+            sprite_zero_pixel: false,
         }
     }
 }
@@ -194,28 +198,35 @@ impl Ppu {
         self.v_addr.increment(offset);
     }
 
-    fn load_shifters(&mut self) {
-        self.bg_pattern_shift.low =
-            (self.bg_pattern_shift.low & 0xFF00) | self.bg_pattern.low as u16;
-        self.bg_pattern_shift.high =
-            (self.bg_pattern_shift.high & 0xFF00) | self.bg_pattern.high as u16;
-        self.bg_palette_shift.low =
-            (self.bg_palette_shift.low & 0xFF00) | (self.bg_palette_id as u16 & 0b01) * 0xFF;
-        self.bg_palette_shift.high =
-            (self.bg_palette_shift.high & 0xFF00) | (self.bg_palette_id as u16 & 0b10) * 0xFF;
+    fn load_background_shifters(&mut self) {
+        self.bg_pattern_shift.low |= self.bg_pattern.low as u16;
+        self.bg_pattern_shift.high |= self.bg_pattern.high as u16;
+        self.bg_palette_shift.low |= (self.bg_palette_id as u16 & 0b01) * 0xFF;
+        self.bg_palette_shift.high |= (self.bg_palette_id as u16 & 0b10) * 0xFF;
     }
 
-    fn update_shifters(&mut self) {
+    fn update_background_shifters(&mut self) {
         self.bg_pattern_shift.low <<= 1;
         self.bg_pattern_shift.high <<= 1;
         self.bg_palette_shift.low <<= 1;
         self.bg_palette_shift.high <<= 1;
     }
 
+    fn update_sprite_shifters(&mut self) {
+        for i in 0..8 {
+            if self.sp_offset_shift[i] == 0 {
+                self.sp_pattern_shift[i].low <<= 1;
+                self.sp_pattern_shift[i].high <<= 1;
+            } else {
+                self.sp_offset_shift[i] -= 1;
+            }
+        }
+    }
+
     fn tick_background(&mut self) {
         match self.dot {
             1..=256 | 321..=336 => {
-                self.update_shifters();
+                self.update_background_shifters();
                 self.on_background_dot()
             }
             257 => {
@@ -243,7 +254,7 @@ impl Ppu {
     fn on_background_dot(&mut self) {
         match self.dot % 8 {
             1 => {
-                self.load_shifters();
+                self.load_background_shifters();
                 self.bg_address = self.v_addr.get_nametable_address();
             }
             2 => self.bg_pattern_id = self.bus.read_u8(self.bg_address),
@@ -263,7 +274,7 @@ impl Ppu {
             5 => {
                 let nametable = self.ctrl.get_background_pattern_table_address();
                 let fine_y = self.v_addr.get_fine_y() as u16;
-                self.bg_address = nametable + (self.bg_pattern_id as u16) * 16 + fine_y + 0;
+                self.bg_address = nametable + (self.bg_pattern_id as u16) * 16 + fine_y;
             }
             6 => self.bg_pattern.low = self.bus.read_u8(self.bg_address),
             7 => self.bg_address += 8,
@@ -290,6 +301,11 @@ impl Ppu {
         if self.dot == 65 {
             self.primary_oam_index = 0;
             self.secondary_oam_index = 0;
+            self.oam_index_overflow = false;
+        }
+
+        if self.dot >= 1 && self.dot < 256 {
+            self.update_sprite_shifters();
         }
 
         match self.dot {
@@ -314,7 +330,7 @@ impl Ppu {
     }
 
     fn evaluate_sprite(&mut self) {
-        if self.secondary_oam_index < 32 {
+        if !self.oam_index_overflow && self.secondary_oam_index < 32 {
             let sprite_y = self.oam_buffer;
             let sprite_height = self.ctrl.get_sprite_height() as i16;
             let offset = self.scanline as i16 - sprite_y as i16;
@@ -325,6 +341,10 @@ impl Ppu {
 
                 self.secondary_oam[i..i + 4].copy_from_slice(&self.primary_oam[j..j + 4]);
                 self.secondary_oam_index += 4;
+
+                if self.primary_oam_index == 0 {
+                    self.sprite_zero_eval = true;
+                }
             }
         } else {
             self.status.set_sprite_overflow();
@@ -416,11 +436,26 @@ impl Ppu {
                 .then(|| self.get_sprite_pixel())
                 .unwrap_or_default();
 
-            let (pixel, palette) = match (bg_pixel, sp_pixel, sp_priority) {
-                (0, 0, _) => (0, 0),
-                (_, 0, _) => (bg_pixel, bg_palette),
-                (_, _, true) => (sp_pixel, sp_palette),
-                _ => (bg_pixel, bg_palette),
+            let (pixel, palette) = match (bg_pixel, sp_pixel) {
+                (0, 0) => (0, 0),
+                (0, _) => (sp_pixel, sp_palette),
+                (_, 0) => (bg_pixel, bg_palette),
+                _ => {
+                    if self.sprite_zero_pixel
+                        && (self.dot > 8
+                            || !(self.mask.show_background_leftmost()
+                                || self.mask.show_sprites_leftmost()))
+                        && self.dot < 256
+                    {
+                        self.status.set_sprite_zero_hit();
+                    }
+
+                    if sp_priority {
+                        (sp_pixel, sp_palette)
+                    } else {
+                        (bg_pixel, bg_palette)
+                    }
+                }
             };
 
             let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
@@ -454,12 +489,13 @@ impl Ppu {
                 let pixel_high = self.sp_pattern_shift[i].high.get(7);
                 let pixel = (pixel_high << 1) | pixel_low;
 
-                self.sp_pattern_shift[i].low <<= 1;
-                self.sp_pattern_shift[i].high <<= 1;
+                if pixel != 0 {
+                    if self.sprite_zero_eval && i == 0 {
+                        self.sprite_zero_pixel = true;
+                    }
 
-                return (pixel, palette, sp_priority);
-            } else {
-                self.sp_offset_shift[i] -= 1;
+                    return (pixel, palette, sp_priority);
+                }
             }
         }
 
@@ -496,6 +532,8 @@ impl Clock for Ppu {
         if self.dot > 340 {
             self.dot %= 341;
             self.scanline += 1;
+            self.sprite_zero_eval = false;
+            self.sprite_zero_pixel = false;
 
             if self.scanline > 261 {
                 self.scanline = 0;

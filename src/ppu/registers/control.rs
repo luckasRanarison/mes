@@ -1,5 +1,6 @@
 use crate::utils::BitFlag;
 
+#[allow(unused)]
 enum ControlFlag {
     N0,
     N1,
@@ -35,18 +36,6 @@ impl ControlRegister {
 
     pub fn get_nametable_bits(&self) -> u8 {
         self.get(ControlFlag::N1) * 2 + self.get(ControlFlag::N0)
-    }
-
-    pub fn get_base_nametable_address(&self) -> u16 {
-        let value = self.get_nametable_bits();
-
-        match value {
-            0 => 0x2000,
-            1 => 0x2400,
-            2 => 0x2800,
-            3 => 0x2C00,
-            _ => unreachable!(),
-        }
     }
 
     pub fn get_vram_increment_value(&self) -> u8 {
@@ -87,27 +76,5 @@ impl ControlRegister {
 
     fn contains(&self, flag: ControlFlag) -> bool {
         self.0.contains(flag as u8)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::ControlRegister;
-
-    #[test]
-    fn test_base_nametable_address() {
-        let mut register = ControlRegister::default();
-
-        register.write(0b0000_0000);
-        assert_eq!(register.get_base_nametable_address(), 0x2000);
-
-        register.write(0b0000_0001);
-        assert_eq!(register.get_base_nametable_address(), 0x2400);
-
-        register.write(0b0000_0010);
-        assert_eq!(register.get_base_nametable_address(), 0x2800);
-
-        register.write(0b0000_0011);
-        assert_eq!(register.get_base_nametable_address(), 0x2C00);
     }
 }

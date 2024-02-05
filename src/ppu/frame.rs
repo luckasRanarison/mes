@@ -18,7 +18,7 @@ impl Frame {
     pub fn set_pixel(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
         let index = (y * 256 + x) * 4;
 
-        self.buffer[index + 0] = rgb.0;
+        self.buffer[index] = rgb.0;
         self.buffer[index + 1] = rgb.1;
         self.buffer[index + 2] = rgb.2;
         self.buffer[index + 3] = 255;

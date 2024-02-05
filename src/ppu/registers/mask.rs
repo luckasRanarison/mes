@@ -1,5 +1,6 @@
 use crate::utils::BitFlag;
 
+#[allow(unused)]
 enum MaskFlag {
     G0,
     M0,
@@ -31,10 +32,6 @@ impl MaskRegister {
 
     pub fn is_rendering(&self) -> bool {
         self.show_background() || self.show_sprites()
-    }
-
-    pub fn is_grayscale(&self) -> bool {
-        self.contains(MaskFlag::G0)
     }
 
     pub fn show_background_leftmost(&self) -> bool {
