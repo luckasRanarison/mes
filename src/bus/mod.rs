@@ -2,10 +2,11 @@ mod dma;
 mod ppu;
 
 use crate::{
+    controller::ControllerState,
     cpu::interrupt::Interrupt,
     mappers::{Mapper, MapperRef},
     ppu::Ppu,
-    utils::{BitFlag, Clock},
+    utils::Clock,
 };
 
 use std::fmt::Debug;
@@ -31,13 +32,13 @@ pub struct MainBus {
     mapper: MapperRef,
     dma_adr: Option<u8>,
     cycle: u64,
-    strobe: bool,
-    controllers: [u8; 2],
+    controller: ControllerState,
 }
 
 impl MainBus {
     pub fn new(mapper: MapperRef) -> Self {
         let ppu = Ppu::new(mapper.clone());
+        let controller = ControllerState::default();
         let ram = [0; 2048];
 
         MainBus {
@@ -46,8 +47,7 @@ impl MainBus {
             mapper,
             dma_adr: None,
             cycle: 0,
-            strobe: false,
-            controllers: [0, 0],
+            controller,
         }
     }
 
@@ -83,8 +83,8 @@ impl MainBus {
         self.ppu.get_frame_buffer()
     }
 
-    pub fn set_controller_button(&mut self, id: usize, button: u8) {
-        self.controllers[id].set(button);
+    pub fn set_controller_state(&mut self, id: usize, state: u8) {
+        self.controller.set_state(id, state);
     }
 
     fn setup_oam_dma(&mut self, offset: u8) {
@@ -99,18 +99,14 @@ impl MainBus {
         self.ram[address as usize % 0x8000] = value;
     }
 
-    fn write_controller(&mut self, value: u8) {
-        self.strobe = value == 1;
+    fn read_controller(&mut self, id: u16) -> u8 {
+        self.controller.poll_button(id as usize)
     }
 
-    fn read_controller(&mut self, id: u16) -> u8 {
-        let result = self.controllers[id as usize].get(7);
-
-        if !self.strobe {
-            self.controllers[id as usize] <<= 1;
+    fn write_controller(&mut self, value: u8) {
+        if value != 0 {
+            self.controller.reload_shift_registers();
         }
-
-        result
     }
 }
 

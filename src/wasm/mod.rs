@@ -24,6 +24,10 @@ impl Nes {
         while !self.cpu.bus().is_vblank() {
             self.cpu.step();
         }
+    }
+
+    #[wasm_bindgen(js_name = "stepVblank")]
+    pub fn step_vblank(&mut self) {
         while self.cpu.bus().is_vblank() {
             self.cpu.step();
         }
@@ -34,9 +38,9 @@ impl Nes {
         self.cpu.bus().get_frame_buffer().as_ptr()
     }
 
-    #[wasm_bindgen(js_name = "setControllerButton")]
-    pub fn set_controller_button(&mut self, id: usize, button: u8) {
-        self.cpu.bus_mut().set_controller_button(id, button);
+    #[wasm_bindgen(js_name = "setControllerState")]
+    pub fn set_controller_state(&mut self, id: usize, state: u8) {
+        self.cpu.bus_mut().set_controller_state(id, state);
     }
 }
 
