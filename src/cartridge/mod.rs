@@ -97,6 +97,7 @@ impl Cartridge {
     }
 }
 
+#[allow(unused)]
 pub fn create_cartridge_mock() -> Cartridge {
     Cartridge {
         header: Header {
