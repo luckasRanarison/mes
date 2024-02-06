@@ -2,13 +2,14 @@ mod bus;
 mod cartridge;
 mod controller;
 mod cpu;
-mod error;
 mod mappers;
 mod ppu;
 mod utils;
 
 #[cfg(feature = "wasm")]
 mod wasm;
+
+pub mod error;
 
 use bus::MainBus;
 use cartridge::Cartridge;
