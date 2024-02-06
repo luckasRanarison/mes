@@ -2,19 +2,22 @@
 // https://www.nesdev.org/wiki/PPU_rendering
 // https://www.nesdev.org/wiki/PPU_sprite_evaluation
 
-mod frame;
-mod palette;
 mod registers;
 
 use crate::{
     bus::{Bus, PpuBus},
     mappers::MapperRef,
-    ppu::{frame::Frame, palette::NES_PALETTE, registers::*},
+    ppu::registers::*,
     utils::{BitFlag, BitPlane, Clock},
 };
 
+const SCREEN_WIDTH: usize = 256;
+const SCREEN_HEIGHT: usize = 240;
 const PRIMARY_OAM_SIZE: usize = 256;
 const SECONDARY_OAM_SIZE: usize = 32;
+
+// Generated from https://bisqwit.iki.fi/utils/nespalette.php
+const NES_PALETTE: &[u8] = include_bytes!("../../palette/nespalette.pal");
 
 #[derive(Debug)]
 pub struct Ppu {
@@ -34,7 +37,7 @@ pub struct Ppu {
     cycle: u64,
     dot: u16,
     scanline: u16,
-    frame: Frame,
+    frame_buffer: Vec<u8>,
     odd_frame: bool,
     bg_address: u16,
     bg_pattern_id: u8,
@@ -53,6 +56,7 @@ pub struct Ppu {
     sp_offset_shift: [u8; 8],
     sprite_zero_eval: bool,
     sprite_zero_pixel: bool,
+    palette: Vec<u8>,
 }
 
 impl Ppu {
@@ -74,7 +78,7 @@ impl Ppu {
             cycle: 0,
             dot: 0,
             scanline: 0,
-            frame: Frame::default(),
+            frame_buffer: vec![0; SCREEN_WIDTH * SCREEN_HEIGHT * 4],
             odd_frame: false,
             bg_address: 0,
             bg_pattern_id: 0,
@@ -93,6 +97,7 @@ impl Ppu {
             sp_offset_shift: [0; 8],
             sprite_zero_eval: false,
             sprite_zero_pixel: false,
+            palette: NES_PALETTE.to_vec(),
         }
     }
 }
@@ -190,7 +195,11 @@ impl Ppu {
     }
 
     pub fn get_frame_buffer(&self) -> &[u8] {
-        self.frame.get_buffer()
+        &self.frame_buffer
+    }
+
+    pub fn set_palette(&mut self, palette: &[u8]) {
+        self.palette = palette.to_vec();
     }
 
     fn increment_vram_address(&mut self) {
@@ -458,11 +467,10 @@ impl Ppu {
                 }
             };
 
-            let palette_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
-            let palette_index = self.bus.read_u8(palette_address);
-            let rgb = NES_PALETTE[palette_index as usize];
+            let color_address = 0x3F00 + (4 * palette as u16 + pixel as u16);
+            let color = self.bus.read_u8(color_address);
 
-            self.frame.set_pixel(x, y, rgb);
+            self.set_frame_pixel(x, y, color);
         }
     }
 
@@ -500,6 +508,16 @@ impl Ppu {
         }
 
         (0, 0, false)
+    }
+
+    fn set_frame_pixel(&mut self, x: usize, y: usize, color: u8) {
+        let color_index = 3 * color as usize;
+        let frame_index = (y * 256 + x) * 4;
+
+        self.frame_buffer[frame_index] = self.palette[color_index];
+        self.frame_buffer[frame_index + 1] = self.palette[color_index + 1];
+        self.frame_buffer[frame_index + 2] = self.palette[color_index + 2];
+        self.frame_buffer[frame_index + 3] = 255;
     }
 }
 

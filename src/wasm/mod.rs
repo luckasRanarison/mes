@@ -30,6 +30,11 @@ impl Nes {
         self.engine.get_frame_buffer().as_ptr()
     }
 
+    #[wasm_bindgen(js_name = "setPalette")]
+    pub fn set_palette(&mut self, palette: &[u8]) {
+        self.engine.set_palette(palette);
+    }
+
     #[wasm_bindgen(js_name = "setControllerState")]
     pub fn set_controller_state(&mut self, id: usize, state: u8) {
         self.engine.set_controller_state(id, state);

@@ -49,6 +49,10 @@ impl Nes {
         self.cpu.bus().get_frame_buffer()
     }
 
+    pub fn set_palette(&mut self, palette: &[u8]) {
+        self.cpu.bus_mut().set_palette(palette);
+    }
+
     pub fn set_controller_state(&mut self, id: usize, state: u8) {
         self.cpu.bus_mut().set_controller_state(id, state);
     }

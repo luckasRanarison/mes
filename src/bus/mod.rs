@@ -83,6 +83,10 @@ impl MainBus {
         self.ppu.get_frame_buffer()
     }
 
+    pub fn set_palette(&mut self, palette: &[u8]) {
+        self.ppu.set_palette(palette);
+    }
+
     pub fn set_controller_state(&mut self, id: usize, state: u8) {
         self.controller.set_state(id, state);
     }
