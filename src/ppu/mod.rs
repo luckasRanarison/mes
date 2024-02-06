@@ -377,9 +377,10 @@ impl Ppu {
             6 if y != 0xFF => self.sp_address += 8,
             7 if y != 0xFF => {
                 let attribute = self.sp_buffer[2];
-                self.sp_pattern_shift[index].high = self.bus.read_u8(self.sp_address);
+                let sprite_x = self.sp_buffer[3];
                 self.sp_attribute_shift[index] = attribute;
-                self.sp_offset_shift[index] = self.sp_buffer[3]; // X coordinate
+                self.sp_offset_shift[index] = sprite_x;
+                self.sp_pattern_shift[index].high = self.bus.read_u8(self.sp_address);
 
                 if attribute.contains(6) {
                     self.reverse_sprite_pattern_bits(index); // reverse horizontally
@@ -410,12 +411,11 @@ impl Ppu {
         };
         let flip_vertical = attribute.contains(7);
         let y = self.scanline - sprite_y as u16;
-        let address = base_address + y;
 
         if flip_vertical {
-            7 - address
+            base_address + 7 - y
         } else {
-            address
+            base_address + y
         }
     }
 
