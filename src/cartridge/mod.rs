@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_load_rom() {
-        let bytes = fs::read("roms/nestest.nes").unwrap();
+        let bytes = fs::read("nestest/nestest.nes").unwrap();
         let rom = Cartridge::try_from_bytes(&bytes);
 
         assert!(rom.is_ok());

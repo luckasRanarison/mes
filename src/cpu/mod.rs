@@ -826,8 +826,8 @@ mod tests {
 
     #[test]
     fn test_cpu_nestest() {
-        let log = fs::read_to_string("roms/nestest.log").unwrap();
-        let rom = fs::read("roms/nestest.nes").unwrap();
+        let log = fs::read_to_string("nestest/nestest.log").unwrap();
+        let rom = fs::read("nestest/nestest.nes").unwrap();
         let cartridge = Cartridge::try_from_bytes(&rom).unwrap();
         let mapper = get_mapper(cartridge).unwrap();
         let bus = MainBus::new(mapper);
