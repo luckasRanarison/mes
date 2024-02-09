@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A decent NES emulator written in Rust and powered by WebAssembly"
+    />
+    <meta name="keywords" content="NES, emulator, rust, wasm" />
+    <meta property="og:title" content="Mes" />
+    <meta
+      property="og:description"
+      content="A decent NES emulator written in Rust and powered by WebAssembly"
+    />
+    <title>Mes</title>
+  </head>
+  <body
+    class="w-full md:min-h-screen md:max-h-screen flex flex-col md:flex-row text-secondary"
+  >
+    <div class="pb-6 md:w-1/2 md:min-h-screen md:max-h-screen overflow-scroll">
+      <div class="w-full py-4 px-6 flex items-center justify-between">
+        <div class="flex items-center space-x-1">
+          <img src="src/assets/gamepad.svg" width="25" alt="icon" />
+          <h1 class="font-semibold text-xl">
+            <span class="text-secondary">Mes</span
+            ><span class="text-primary">emu</span>
+          </h1>
+        </div>
+        <a href="https://github.com/luckasRanarison/mes">
+          <img src="src/assets/github.svg" alt="source" width="25" />
+        </a>
+      </div>
+      <div class="p-5">
+        <div class="py-8 space-y-6 flex flex-col items-center">
+          <img src="src/assets/nes-controller.svg" alt="NES" width="40%" />
+          <div class="text-center">
+            A decent <span class="text-hl">NES</span> emulator written in
+            <span class="text-hl">Rust</span> and powered by
+            <span class="text-hl">WebAssembly</span>.
+          </div>
+        </div>
+        <div class="space-y-6">
+          <div class="space-y-2">
+            <div class="space-x-2 flex items-center">
+              <img src="src/assets/sparkle.svg" alt="sparkle" width="20" />
+              <h2 class="text-xl font-semibold">Features</h2>
+            </div>
+            <ul class="ml-6 space-y-2 list-disc">
+              <li>
+                Supports
+                <a href="https://www.nesdev.org/wiki/INES" class="text-hl"
+                  >iNES 1.0</a
+                >
+                file format.
+              </li>
+              <li>
+                Supported mappers:
+                <a href="https://nesdir.github.io/mapper0.html" class="text-hl"
+                  >NROM</a
+                >.
+              </li>
+              <li>Implements some of the original hardware bugs and quirks.</li>
+            </ul>
+          </div>
+          <div class="space-y-2">
+            <div class="space-x-2 flex items-center">
+              <img src="src/assets/keyboard.svg" alt="sparkle" width="20" />
+              <h2 class="text-xl font-semibold">Controls</h2>
+            </div>
+            <ul class="ml-6 space-y-2 list-disc">
+              <li>
+                <span class="mr-2">Directions: </span>
+                <span class="space-x-2">
+                  <span class="key">&uarr;</span>
+                  <span class="key">&darr;</span>
+                  <span class="key">&larr;</span>
+                  <span class="key">&rarr;</span>
+                </span>
+              </li>
+              <li>
+                <span class="mr-2">A: </span>
+                <span class="key">Q</span> /
+                <span class="key">A</span>
+              </li>
+              <li>
+                <span class="mr-2">B: </span>
+                <span class="key">Z</span> /
+                <span class="key">W</span>
+              </li>
+              <li>
+                <span class="mr-2">Select: </span>
+                <span class="key">Space</span>
+              </li>
+              <li>
+                <span class="mr-2">Start: </span>
+                <span class="key">Enter</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="md:w-1/2 md:h-screen py-10 px-4 flex justify-center items-center bg-smoke"
+    >
+      <div class="p-4 rounded-md border-[1px] border-smoke bg-white">
+        <div id="canvas-container" class="w-full h-full flex flex-col hidden">
+          <canvas
+            id="canvas"
+            class="w-[512px] max-w-full rounded-md [image-rendering:pixelated]"
+            width="256"
+            height="240"
+          ></canvas>
+          <div class="pt-4 flex items-center justify-between">
+            <div>
+              <button
+                id="button-stop"
+                class="space-x-1 py-2 px-4 flex rounded-md bg-secondary"
+              >
+                <img src="src/assets/stop.svg" alt="stop" width="20" />
+                <span class="mr-1 font-semibold text-white">Stop</span>
+              </button>
+            </div>
+            <div>
+              <button
+                id="button-fullscreen"
+                class="p-2 rounded-md bg-secondary"
+              >
+                <img
+                  src="src/assets/fullscreen.svg"
+                  alt="fullscreen"
+                  width="20"
+                />
+              </button>
+            </div>
+          </div>
+          <div class="md:hidden">
+            <div class="pt-6 pb-3 flex justify-between items-center">
+              <div class="grid grid-cols-3 gap-1">
+                <div></div>
+                <div id="key-up" class="py-3 px-2 arrow-key">
+                  <img src="src/assets/arrow-up.svg" alt="↑" width="14" />
+                </div>
+                <div></div>
+                <div id="key-left" class="py-3 px-3 arrow-key">
+                  <img src="src/assets/arrow-left.svg" alt="←" width="14" />
+                </div>
+                <div></div>
+                <div id="key-right" class="py-3 px-3 arrow-key">
+                  <img src="src/assets/arrow-right.svg" alt="→" width="14" />
+                </div>
+                <div></div>
+                <div id="key-down" class="py-3 px-2 arrow-key">
+                  <img src="src/assets/arrow-down.svg" alt="↓" width="14" />
+                </div>
+                <div></div>
+              </div>
+              <div class="flex space-x-3">
+                <div id="key-select" class="menu-key"></div>
+                <div id="key-start" class="menu-key"></div>
+              </div>
+              <div class="flex space-x-3">
+                <div id="key-b" class="action-key">B</div>
+                <div id="key-a" class="action-key">A</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          id="drag-drop-area"
+          class="py-12 px-16 space-y-4 flex flex-col items-center justify-center rounded-sm border-2 border-primary border-dashed text-center"
+        >
+          <img src="src/assets/drag-drop.svg" alt="file" width="100" />
+          <div>
+            Drag and drop your NES <span class="text-hl">ROM</span> here
+          </div>
+          <div>OR</div>
+          <label
+            for="input-rom"
+            class="py-2 px-4 rounded-md font-semibold text-white bg-primary cursor-pointer"
+            >Upload</label
+          >
+          <input type="file" id="input-rom" class="hidden" />
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

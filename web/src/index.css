@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-hl {
+    @apply text-primary font-semibold;
+  }
+}
+
+@layer components {
+  .key {
+    @apply py-1 px-2 text-sm rounded-md text-white bg-secondary;
+  }
+
+  .arrow-key {
+    @apply flex justify-center rounded-md text-white bg-secondary;
+  }
+
+  .action-key {
+    @apply w-10 h-10 rounded-full flex justify-center items-center font-semibold text-white bg-primary;
+  }
+
+  .menu-key {
+    @apply py-2 px-4 rounded-md text-white bg-secondary text-[12px];
+  }
+}

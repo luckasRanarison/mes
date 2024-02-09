@@ -1,0 +1,19 @@
+[package]
+name = "mes"
+version = "0.1.0"
+edition = "2021"
+description = "Yet another NES emulator"
+license = "MIT"
+repository = "https//github.com/luckasRanarison/mes"
+authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
+
+[dependencies]
+lazy_static = "1.4.0"
+thiserror = "1.0.56"
+wasm-bindgen = { version = "0.2.90", optional = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
