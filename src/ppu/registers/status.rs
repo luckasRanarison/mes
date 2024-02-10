@@ -1,6 +1,6 @@
 use crate::utils::BitFlag;
 
-pub enum StatusFlag {
+enum StatusFlag {
     // _,
     // _,
     // _,
