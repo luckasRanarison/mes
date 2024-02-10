@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
@@ -16,6 +16,7 @@
     />
     <title>Mes</title>
   </head>
+
   <body
     class="w-full md:min-h-screen md:max-h-screen flex flex-col md:flex-row text-secondary"
   >
@@ -62,6 +63,7 @@
                 >.
               </li>
               <li>Implements some of the original hardware bugs and quirks.</li>
+              <li>Mobile device controls.</li>
             </ul>
           </div>
           <div class="space-y-2">
@@ -117,7 +119,7 @@
             <div>
               <button
                 id="button-stop"
-                class="space-x-1 py-2 px-4 flex rounded-md bg-secondary"
+                class="space-x-1 py-2 px-4 flex items-center rounded-md bg-secondary"
               >
                 <img src="src/assets/stop.svg" alt="stop" width="20" />
                 <span class="mr-1 font-semibold text-white">Stop</span>
@@ -179,11 +181,28 @@
           <div>OR</div>
           <label
             for="input-rom"
-            class="py-2 px-4 rounded-md font-semibold text-white bg-primary cursor-pointer"
-            >Upload</label
+            class="space-x-1 py-2 px-4 flex items-center rounded-md text-white bg-primary cursor-pointer"
           >
+            <span>Upload</span>
+            <img src="src/assets/upload.svg" alt="icon" width="16" />
+          </label>
           <input type="file" id="input-rom" class="hidden" />
         </div>
+      </div>
+    </div>
+    <div
+      id="popup-container"
+      class="p-4 w-screen h-screen fixed flex items-center justify-center hidden"
+    >
+      <div
+        class="min-w-[300px] relative py-6 px-8 flex flex-col items-center rounded-md border-[1px] border-smoke bg-white"
+      >
+        <img src="src/assets/error.svg" alt="error" width="50" class="mb-2" />
+        <div class="mb-4 font-semibold text-xl text-primary">Error</div>
+        <div id="error-message" class="mb-6"></div>
+        <button class="py-2 px-5 rounded-md text-white bg-primary">
+          Close
+        </button>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

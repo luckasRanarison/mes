@@ -17,6 +17,8 @@ const keySelect = document.getElementById("key-select")!;
 const keyStart = document.getElementById("key-start")!;
 const keyB = document.getElementById("key-b")!;
 const keyA = document.getElementById("key-a")!;
+const popupContainer = document.getElementById("popup-container")!;
+const errorMessgae = document.getElementById("error-message")!;
 const emulator = new EmulatorState(context);
 
 async function handleUpload(file?: File | null) {
@@ -26,10 +28,13 @@ async function handleUpload(file?: File | null) {
 
     try {
       emulator.setCartridge(bytes);
-      canvasContainer.classList.toggle("hidden");
-      dragDropArea.classList.toggle("hidden");
+      canvasContainer.classList.remove("hidden");
+      dragDropArea.classList.add("hidden");
     } catch (error) {
-      console.log(error);
+      errorMessgae.innerText = (error as Error)
+        .toString()
+        .replace("Error: ", "");
+      popupContainer.classList.remove("hidden");
     }
   }
 }
@@ -77,12 +82,17 @@ function handleTouchEnd(elemnt: HTMLElement, button: ControllerButton) {
   });
 }
 
+function handlePopupClose() {
+  popupContainer.classList.add("hidden");
+}
+
 dragDropArea.addEventListener("dragover", handleDragOver);
 dragDropArea.addEventListener("dragleave", handleDragLeave);
 dragDropArea.addEventListener("drop", handleDrop);
 inputRom.addEventListener("change", handleInputChange);
 stopButton.addEventListener("click", handleStop);
 fullscreenButton.addEventListener("click", handleFullScreen);
+popupContainer.addEventListener("click", handlePopupClose);
 
 window.addEventListener("keydown", (e) =>
   emulator.controller.update(e.code, true)
