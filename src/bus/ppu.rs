@@ -50,11 +50,13 @@ impl PpuBus {
 
     fn read_palette(&self, address: u16) -> u8 {
         let address = address as usize & (PALETTE_SIZE - 1);
+        let address = if address == 0x10 { 0 } else { address };
         self.palette[address]
     }
 
     fn write_palette(&mut self, address: u16, value: u8) {
         let address = address as usize & (PALETTE_SIZE - 1);
+        let address = if address == 0x10 { 0 } else { address };
         self.palette[address] = value;
     }
 

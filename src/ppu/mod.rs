@@ -479,6 +479,7 @@ impl Ppu {
         let low_pixel = self.bg_pattern_shift.low.get(offset);
         let high_pixel = self.bg_pattern_shift.high.get(offset);
         let pixel = (high_pixel << 1) + low_pixel;
+        let pixel = if pixel & 3 > 0 { pixel } else { 0 };
 
         let low_palette = self.bg_palette_shift.low.get(offset);
         let high_palette = self.bg_palette_shift.high.get(offset);
