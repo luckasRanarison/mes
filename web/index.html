@@ -192,14 +192,14 @@
     </div>
     <div
       id="popup-container"
-      class="p-4 w-screen h-screen fixed flex items-center justify-center hidden"
+      class="p-4 w-screen h-screen fixed flex items-center justify-center hidden bg-smoke"
     >
       <div
-        class="min-w-[300px] relative py-6 px-8 flex flex-col items-center rounded-md border-[1px] border-smoke bg-white"
+        class="min-w-[300px] max-w-[400px] relative py-6 px-8 flex flex-col items-center rounded-md border-[1px] border-smoke bg-white"
       >
         <img src="src/assets/error.svg" alt="error" width="50" class="mb-2" />
         <div class="mb-4 font-semibold text-xl text-primary">Error</div>
-        <div id="error-message" class="mb-6"></div>
+        <div id="error-message" class="mb-6 text-center"></div>
         <button class="py-2 px-5 rounded-md text-white bg-primary">
           Close
         </button>
