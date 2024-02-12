@@ -1,9 +1,10 @@
 mod mapper_000;
+mod mapper_002;
 
 use crate::{
     cartridge::{create_cartridge_mock, Cartridge, Mirroring},
     error::Error,
-    mappers::mapper_000::NRom,
+    mappers::{mapper_000::NRom, mapper_002::UxRom},
     utils::Reset,
 };
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
@@ -26,6 +27,7 @@ pub trait Mapper: Debug + Reset {
 fn get_mapper(cartridge: Cartridge) -> Option<MapperRef> {
     match cartridge.header.mapper {
         0 => Some(create_ref(NRom::new(cartridge))),
+        2 => Some(create_ref(UxRom::new(cartridge))),
         _ => None,
     }
 }
