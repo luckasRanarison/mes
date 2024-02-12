@@ -103,6 +103,10 @@ impl Ppu {
 }
 
 impl Ppu {
+    pub fn read_buffer(&self) -> u8 {
+        self.vram_buffer
+    }
+
     pub fn read_status(&mut self) -> u8 {
         let mask = 0b1110_0000;
         let status = (self.status.read() & mask) | (self.vram_buffer & !mask);
@@ -408,18 +412,19 @@ impl Ppu {
         self.sp_pattern_shift[index].high = self.sp_pattern_shift[index].high.reverse_bits();
     }
 
+    // https://www.nesdev.org/wiki/PPU_OAM#Byte_1
     fn get_sprite_pattern_address(&self) -> u16 {
         let sprite_y = self.sp_buffer[0];
         let tile = self.sp_buffer[1];
         let attribute = self.sp_buffer[2];
         let height = self.ctrl.get_sprite_height();
         let pattern_table = self.ctrl.get_sprite_pattern_table_address();
-        let base_address = match height {
-            8 => pattern_table + 16 * tile as u16,
-            _ => 0x1000 * tile.get(0) as u16 + (16 * (tile >> 1) as u16),
-        };
         let flip_vertical = attribute.contains(7);
         let y = self.scanline - sprite_y as u16;
+        let base_address = match height {
+            8 => pattern_table + 16 * tile as u16,
+            _ => 0x1000 * tile.get(0) as u16 + ((tile as u16 & 0b1111_1110) + (y / 8)) * 16,
+        };
 
         if flip_vertical {
             base_address + 7 - y

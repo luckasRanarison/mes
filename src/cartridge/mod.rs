@@ -137,7 +137,7 @@ impl Cartridge {
     }
 
     pub fn read_prg_ram(&self, address: u16) -> u8 {
-        self.prg_ram[address as usize]
+        self.prg_ram[address as usize & 0x1FFF]
     }
 
     pub fn read_chr(&self, address: u16, page: ChrPage) -> u8 {
