@@ -1,3 +1,5 @@
+// https://www.nesdev.org/wiki/UxROM
+
 use super::Mapper;
 use crate::{
     cartridge::{Cartridge, ChrPage, Mirroring, PrgPage},

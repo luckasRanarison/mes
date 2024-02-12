@@ -6,6 +6,7 @@ const INES_ASCII: [u8; 4] = [0x4E, 0x45, 0x53, 0x1A];
 const INES_HEADER_SIZE: usize = 16;
 const TRAINER_SIZE: usize = 512;
 const PRG_ROM_PAGE_SIZE: usize = 16384;
+const PRG_RAM_SIZE: usize = 8192;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
 const CHR_RAM_PAGE_SIZE: usize = 8192;
 
@@ -94,7 +95,7 @@ impl Cartridge {
         let chr_rom_start = prg_rom_start + prg_rom_size;
         let prg_rom = bytes[prg_rom_start..prg_rom_start + prg_rom_size].to_vec();
         let chr_rom = bytes[chr_rom_start..chr_rom_start + chr_rom_size].to_vec();
-        let prg_ram_size = 0x1FFF;
+        let prg_ram_size = PRG_RAM_SIZE;
         let prg_ram = vec![0_u8; prg_ram_size];
         let chr_ram_size = (header.chr_rom_pages == 0) as usize * CHR_RAM_PAGE_SIZE;
         let chr_ram = vec![0_u8; chr_ram_size];
