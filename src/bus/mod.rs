@@ -103,11 +103,11 @@ impl MainBus {
     }
 
     fn read_ram(&self, address: u16) -> u8 {
-        self.ram[address as usize % 0x8000]
+        self.ram[address as usize & 0x07FF]
     }
 
     fn write_ram(&mut self, address: u16, value: u8) {
-        self.ram[address as usize % 0x8000] = value;
+        self.ram[address as usize & 0x07FF] = value;
     }
 
     fn read_controller(&mut self, id: u16) -> u8 {
@@ -128,7 +128,9 @@ impl Bus for MainBus {
             0x2002 => self.ppu.read_status(),
             0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read_data(),
+            0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 => self.ppu.read_buffer(),
             0x2008..=0x3FFF => self.read_u8(address & 0x2007),
+            0x4015 => 0, // TODO: APU
             0x4016 | 0x4017 => self.read_controller(address & 1),
             0x4020..=0xFFFF => self.mapper.read(address),
             _ => panic!("Trying to read from write-only address: 0x{:x}", address),

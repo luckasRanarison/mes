@@ -1,4 +1,4 @@
-// https://www.nesdev.org/wiki/NROM
+// https://www.nesdev.org/wiki/INES_Mapper_003
 
 use super::Mapper;
 use crate::{
@@ -7,21 +7,26 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct NRom {
+pub struct CnRom {
     cartridge: Cartridge,
+    chr_bank: u8,
 }
 
-impl NRom {
+impl CnRom {
     pub fn new(cartridge: Cartridge) -> Self {
-        Self { cartridge }
+        Self {
+            cartridge,
+            chr_bank: 0,
+        }
     }
 }
 
-impl Mapper for NRom {
+impl Mapper for CnRom {
     fn read(&self, address: u16) -> u8 {
         match address {
-            0x0000..=0x1FFF => self.cartridge.read_chr(address, ChrPage::Index8(0)),
-            0x4020..=0x5FFF => 0,
+            0x0000..=0x1FFF => self
+                .cartridge
+                .read_chr(address, ChrPage::Index8(self.chr_bank)),
             0x6000..=0x7FFF => self.cartridge.read_prg_ram(address),
             0x8000..=0xBFFF => self.cartridge.read_prg_rom(address, PrgPage::Index16(0)),
             0xC000..=0xFFFF => self.cartridge.read_prg_rom(address, PrgPage::Last16),
@@ -30,8 +35,14 @@ impl Mapper for NRom {
     }
 
     fn write(&mut self, address: u16, value: u8) {
-        if let 0x6000..=0x7FFF = address {
-            self.cartridge.write_prg_ram(address, value);
+        match address {
+            0x0000..=0x1FFF => {
+                self.cartridge
+                    .write_chr_ram(address, value, ChrPage::Index8(self.chr_bank))
+            }
+            0x6000..=0x7FFF => self.cartridge.write_prg_ram(address, value),
+            0x8000..=0xFFFF => self.chr_bank = value,
+            _ => {}
         }
     }
 
@@ -40,6 +51,8 @@ impl Mapper for NRom {
     }
 }
 
-impl Reset for NRom {
-    fn reset(&mut self) {}
+impl Reset for CnRom {
+    fn reset(&mut self) {
+        self.chr_bank = 0;
+    }
 }

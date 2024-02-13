@@ -6,6 +6,7 @@ const INES_ASCII: [u8; 4] = [0x4E, 0x45, 0x53, 0x1A];
 const INES_HEADER_SIZE: usize = 16;
 const TRAINER_SIZE: usize = 512;
 const PRG_ROM_PAGE_SIZE: usize = 16384;
+const PRG_RAM_SIZE: usize = 8192;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
 const CHR_RAM_PAGE_SIZE: usize = 8192;
 
@@ -13,6 +14,7 @@ const CHR_RAM_PAGE_SIZE: usize = 8192;
 pub enum Mirroring {
     Vertical,
     Horizontal,
+    OneScreen,
     FourScreen,
 }
 
@@ -63,6 +65,17 @@ impl Header {
     }
 }
 
+pub enum ChrPage {
+    Index4(u8),
+    Index8(u8),
+}
+
+pub enum PrgPage {
+    Index16(u8),
+    Index32(u8),
+    Last16,
+}
+
 #[derive(Debug)]
 pub struct Cartridge {
     pub header: Header,
@@ -82,7 +95,7 @@ impl Cartridge {
         let chr_rom_start = prg_rom_start + prg_rom_size;
         let prg_rom = bytes[prg_rom_start..prg_rom_start + prg_rom_size].to_vec();
         let chr_rom = bytes[chr_rom_start..chr_rom_start + chr_rom_size].to_vec();
-        let prg_ram_size = 0x1FFF;
+        let prg_ram_size = PRG_RAM_SIZE;
         let prg_ram = vec![0_u8; prg_ram_size];
         let chr_ram_size = (header.chr_rom_pages == 0) as usize * CHR_RAM_PAGE_SIZE;
         let chr_ram = vec![0_u8; chr_ram_size];
@@ -94,6 +107,51 @@ impl Cartridge {
             prg_ram,
             chr_ram,
         })
+    }
+
+    pub fn write_prg_ram(&mut self, address: u16, value: u8) {
+        self.prg_ram[address as usize & 0x1FFF] = value;
+    }
+
+    pub fn write_chr_ram(&mut self, address: u16, value: u8, page: ChrPage) {
+        if self.header.chr_rom_pages == 0 {
+            let (page_start, mask) = match page {
+                ChrPage::Index4(index) => (index as usize * (CHR_ROM_PAGE_SIZE / 2), 0x0FFF),
+                ChrPage::Index8(index) => (index as usize * CHR_ROM_PAGE_SIZE, 0x1FFF),
+            };
+
+            self.chr_ram[page_start + (address as usize & mask)] = value;
+        }
+    }
+
+    pub fn read_prg_rom(&self, address: u16, page: PrgPage) -> u8 {
+        let (page_start, mask) = match page {
+            PrgPage::Index16(index) => (index as usize * PRG_ROM_PAGE_SIZE, 0x3FFF),
+            PrgPage::Index32(index) => (index as usize * PRG_ROM_PAGE_SIZE * 2, 0x7FFF),
+            PrgPage::Last16 => (
+                (self.header.prg_rom_pages as usize - 1) * PRG_ROM_PAGE_SIZE,
+                0x3FFF,
+            ),
+        };
+
+        self.prg_rom[page_start + (address as usize & mask)]
+    }
+
+    pub fn read_prg_ram(&self, address: u16) -> u8 {
+        self.prg_ram[address as usize & 0x1FFF]
+    }
+
+    pub fn read_chr(&self, address: u16, page: ChrPage) -> u8 {
+        let chr = match self.header.chr_rom_pages {
+            0 => &self.chr_ram,
+            _ => &self.chr_rom,
+        };
+        let (page_start, mask) = match page {
+            ChrPage::Index4(index) => (index as usize * (CHR_ROM_PAGE_SIZE / 2), 0x0FFF),
+            ChrPage::Index8(index) => (index as usize * CHR_ROM_PAGE_SIZE, 0x1FFF),
+        };
+
+        chr[page_start + (address as usize & mask)]
     }
 }
 

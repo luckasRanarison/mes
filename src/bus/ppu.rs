@@ -76,6 +76,7 @@ impl PpuBus {
         let mirroring = self.mapper.get_mirroring();
         let mirrored_address = match mirroring {
             Mirroring::Horizontal if matches!(nametable_id, 1 | 2) => relative_address - 0x400,
+            Mirroring::OneScreen => relative_address & 0x03FF,
             _ => relative_address,
         };
         mirrored_address & 0x07FF
