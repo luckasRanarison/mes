@@ -416,15 +416,15 @@ impl Ppu {
         let pattern_table = self.ctrl.get_sprite_pattern_table_address();
         let flip_vertical = attribute.contains(7);
         let y = self.scanline - sprite_y as u16;
-        let base_address = match height {
-            8 => pattern_table + 16 * tile as u16,
-            _ => 0x1000 * tile.get(0) as u16 + ((tile as u16 & 0b1111_1110) + (y / 8)) * 16,
-        };
+        let offset = if flip_vertical { 7 - (y % 8) } else { y % 8 };
 
-        if flip_vertical {
-            base_address + 7 - (y % 8)
+        if height == 8 {
+            pattern_table + 16 * tile as u16 + offset
         } else {
-            base_address + (y % 8)
+            0x1000 * tile.get(0) as u16
+                + (tile as u16 & 0b1111_1110) * 16
+                + (flip_vertical as u16 ^ (y / 8)) * 16
+                + offset
         }
     }
 

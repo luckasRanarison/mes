@@ -1,11 +1,10 @@
 // https://www.nesdev.org/wiki/MMC1
 
+use super::Mapper;
 use crate::{
     cartridge::{Cartridge, ChrPage, Mirroring, PrgPage},
     utils::{BitFlag, Reset},
 };
-
-use super::Mapper;
 
 #[derive(Debug)]
 pub struct SxRom {

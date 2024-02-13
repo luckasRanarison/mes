@@ -25,6 +25,7 @@ impl Mapper for UxRom {
     fn read(&self, address: u16) -> u8 {
         match address {
             0x0000..=0x1FFF => self.cartridge.read_chr(address, ChrPage::Index8(0)),
+            0x4020..=0x5FFF => 0,
             0x6000..=0x7FFF => self.cartridge.read_prg_ram(address),
             0x8000..=0xBFFF => self
                 .cartridge
