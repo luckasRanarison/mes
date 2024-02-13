@@ -9,7 +9,7 @@ use crate::{
     utils::{Clock, Reset},
 };
 
-use std::fmt::Debug;
+use std::{collections::VecDeque, fmt::Debug};
 
 pub use {dma::DmaState, ppu::PpuBus};
 
@@ -35,6 +35,7 @@ pub struct MainBus {
     dma_adr: Option<u8>,
     cycle: u64,
     controller: ControllerState,
+    interrupts: VecDeque<Interrupt>,
 }
 
 impl MainBus {
@@ -50,11 +51,19 @@ impl MainBus {
             dma_adr: None,
             cycle: 0,
             controller,
+            interrupts: VecDeque::new(),
         }
     }
 
     pub fn poll_interrupt(&mut self) -> Option<Interrupt> {
-        self.ppu.poll_nmi().then_some(Interrupt::Nmi)
+        if self.ppu.poll_nmi() {
+            self.interrupts.push_front(Interrupt::Nmi)
+        }
+        if self.ppu.bus.mapper.poll_irq() {
+            self.interrupts.push_front(Interrupt::Irq)
+        }
+
+        self.interrupts.pop_back()
     }
 
     pub fn poll_dma(&mut self) -> Option<u8> {
@@ -95,7 +104,7 @@ impl MainBus {
 
     pub fn set_mapper(&mut self, mapper: MapperRef) {
         self.mapper = mapper.clone();
-        self.ppu.bus.set_mapper(mapper);
+        self.ppu.bus.mapper = mapper;
     }
 
     fn setup_oam_dma(&mut self, offset: u8) {

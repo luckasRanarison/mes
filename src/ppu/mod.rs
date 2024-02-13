@@ -6,7 +6,7 @@ mod registers;
 
 use crate::{
     bus::{Bus, PpuBus},
-    mappers::MapperRef,
+    mappers::{Mapper, MapperRef},
     ppu::registers::*,
     utils::{BitFlag, BitPlane, Clock, Reset},
 };
@@ -553,6 +553,7 @@ impl Clock for Ppu {
             self.scanline += 1;
             self.sprite_zero_eval = false;
             self.sprite_zero_pixel = false;
+            self.bus.mapper.scanline_hook();
 
             if self.scanline > 261 {
                 self.scanline = 0;

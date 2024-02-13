@@ -2,6 +2,7 @@ mod mapper_000;
 mod mapper_001;
 mod mapper_002;
 mod mapper_003;
+mod mapper_004;
 
 use self::{mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::CnRom};
 use crate::{
@@ -24,6 +25,10 @@ pub trait Mapper: Debug + Reset {
     fn read(&self, address: u16) -> u8;
     fn write(&mut self, address: u16, value: u8);
     fn get_mirroring(&self) -> Mirroring;
+    fn scanline_hook(&mut self) {}
+    fn poll_irq(&mut self) -> bool {
+        false
+    }
 }
 
 fn get_mapper(cartridge: Cartridge) -> Option<MapperRef> {

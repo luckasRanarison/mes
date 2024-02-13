@@ -12,7 +12,7 @@ const PALETTE_SIZE: usize = 32;
 pub struct PpuBus {
     vram: [u8; VRAM_SIZE],
     palette: [u8; PALETTE_SIZE],
-    mapper: MapperRef,
+    pub(crate) mapper: MapperRef,
 }
 
 impl Bus for PpuBus {
@@ -42,10 +42,6 @@ impl PpuBus {
             palette: [0; PALETTE_SIZE],
             mapper,
         }
-    }
-
-    pub fn set_mapper(&mut self, mapper: MapperRef) {
-        self.mapper = mapper;
     }
 
     fn read_palette(&self, address: u16) -> u8 {
