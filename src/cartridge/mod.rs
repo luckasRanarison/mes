@@ -65,17 +65,19 @@ impl Header {
     }
 }
 
+#[derive(Debug)]
 pub enum ChrPage {
     Index1(u8),
-    Index2(u8),
     Index4(u8),
     Index8(u8),
 }
 
+#[derive(Debug)]
 pub enum PrgPage {
     Index8(u8),
     Index16(u8),
     Index32(u8),
+    Last8(u8),
     Last16,
 }
 
@@ -120,7 +122,6 @@ impl Cartridge {
         if self.header.chr_rom_pages == 0 {
             let (page_start, mask) = match page {
                 ChrPage::Index1(index) => (index as usize * (CHR_ROM_PAGE_SIZE / 8), 0x03FF),
-                ChrPage::Index2(index) => (index as usize * (CHR_ROM_PAGE_SIZE / 4), 0x07FF),
                 ChrPage::Index4(index) => (index as usize * (CHR_ROM_PAGE_SIZE / 2), 0x0FFF),
                 ChrPage::Index8(index) => (index as usize * CHR_ROM_PAGE_SIZE, 0x1FFF),
             };
@@ -134,6 +135,11 @@ impl Cartridge {
             PrgPage::Index8(index) => (index as usize * PRG_ROM_PAGE_SIZE / 2, 0x1FFF),
             PrgPage::Index16(index) => (index as usize * PRG_ROM_PAGE_SIZE, 0x3FFF),
             PrgPage::Index32(index) => (index as usize * PRG_ROM_PAGE_SIZE * 2, 0x7FFF),
+            PrgPage::Last8(index) => (
+                (self.header.prg_rom_pages as usize * 2 - 1 - index as usize) * PRG_ROM_PAGE_SIZE
+                    / 2,
+                0x1FFF,
+            ),
             PrgPage::Last16 => (
                 (self.header.prg_rom_pages as usize - 1) * PRG_ROM_PAGE_SIZE,
                 0x3FFF,
@@ -154,7 +160,6 @@ impl Cartridge {
         };
         let (page_start, mask) = match page {
             ChrPage::Index1(index) => (index as usize * (CHR_ROM_PAGE_SIZE / 8), 0x03FF),
-            ChrPage::Index2(index) => (index as usize * (CHR_ROM_PAGE_SIZE / 4), 0x07FF),
             ChrPage::Index4(index) => (index as usize * (CHR_ROM_PAGE_SIZE / 2), 0x0FFF),
             ChrPage::Index8(index) => (index as usize * CHR_ROM_PAGE_SIZE, 0x1FFF),
         };

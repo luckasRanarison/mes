@@ -4,7 +4,9 @@ mod mapper_002;
 mod mapper_003;
 mod mapper_004;
 
-use self::{mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::CnRom};
+use self::{
+    mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::CnRom, mapper_004::TxRom,
+};
 use crate::{
     cartridge::{create_cartridge_mock, Cartridge, Mirroring},
     error::Error,
@@ -37,6 +39,7 @@ fn get_mapper(cartridge: Cartridge) -> Option<MapperRef> {
         1 => Some(create_ref(SxRom::new(cartridge))),
         2 => Some(create_ref(UxRom::new(cartridge))),
         3 => Some(create_ref(CnRom::new(cartridge))),
+        4 => Some(create_ref(TxRom::new(cartridge))),
         _ => None,
     }
 }
