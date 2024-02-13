@@ -381,11 +381,6 @@ impl Ppu {
         match cycle {
             0..=3 => self.sp_buffer[cycle as usize] = oam_value,
             4 if y != 0xFF => self.sp_address = self.get_sprite_pattern_address(),
-            4 => {
-                // clear shifters to avoid artifacts
-                self.sp_pattern_shift[index].low = 0;
-                self.sp_pattern_shift[index].high = 0;
-            }
             5 if y != 0xFF => self.sp_pattern_shift[index].low = self.bus.read_u8(self.sp_address),
             6 if y != 0xFF => self.sp_address += 8,
             7 if y != 0xFF => {
@@ -427,9 +422,9 @@ impl Ppu {
         };
 
         if flip_vertical {
-            base_address + 7 - y
+            base_address + 7 - (y % 8)
         } else {
-            base_address + y
+            base_address + (y % 8)
         }
     }
 
