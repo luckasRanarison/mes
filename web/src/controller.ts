@@ -1,47 +1,48 @@
-type ButtonMap = Record<string, ControllerButton | null>;
-
-enum ControllerButton {
-  A = 0b1000_0000,
-  B = 0b0100_0000,
+// prettier-ignore
+enum Button {
+  A      = 0b1000_0000,
+  B      = 0b0100_0000,
   Select = 0b0010_0000,
-  Start = 0b0001_0000,
-  Up = 0b0000_1000,
-  Down = 0b0000_0100,
-  Left = 0b0000_0010,
-  Right = 0b0000_0001,
+  Start  = 0b0001_0000,
+  Up     = 0b0000_1000,
+  Down   = 0b0000_0100,
+  Left   = 0b0000_0010,
+  Right  = 0b0000_0001,
 }
 
-const defaultMapping = {
-  KeyA: ControllerButton.A,
-  KeyZ: ControllerButton.B,
-  KeyQ: ControllerButton.A,
-  KeyW: ControllerButton.B,
-  Space: ControllerButton.Select,
-  Enter: ControllerButton.Start,
-  ArrowUp: ControllerButton.Up,
-  ArrowDown: ControllerButton.Down,
-  ArrowLeft: ControllerButton.Left,
-  ArrowRight: ControllerButton.Right,
-};
+const defaultP1 = new Map([
+  ["KeyA", Button.A],
+  ["KeyZ", Button.B],
+  ["KeyQ", Button.A],
+  ["KeyW", Button.B],
+  ["Space", Button.Select],
+  ["Enter", Button.Start],
+  ["ArrowUp", Button.Up],
+  ["ArrowDown", Button.Down],
+  ["ArrowLeft", Button.Left],
+  ["ArrowRight", Button.Right],
+]);
 
-class ControllerState {
-  value: number;
-  mappings: ButtonMap;
+class Controller {
+  private value: number;
+  private mappings: Map<string, Button>;
 
-  constructor() {
-    this.value = 0;
-    this.mappings = defaultMapping;
+  constructor(mappings: Map<string, Button>) {
+    this.value = 0b0000_0000;
+    this.mappings = mappings;
   }
 
-  update(key: string, state: boolean) {
-    const button = this.mappings[key];
+  handleKeyEvent(event: KeyboardEvent, state: boolean) {
+    const button = this.mappings.get(event.code);
 
     if (button) {
       this.updateButton(button, state);
     }
+
+    return button;
   }
 
-  updateButton(button: ControllerButton, state: boolean) {
+  updateButton(button: Button, state: boolean) {
     if (state) {
       this.value |= button;
     } else {
@@ -54,4 +55,4 @@ class ControllerState {
   }
 }
 
-export { ControllerState, ControllerButton, defaultMapping };
+export { Controller, defaultP1 };

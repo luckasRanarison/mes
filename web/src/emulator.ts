@@ -1,20 +1,20 @@
 import { Nes } from "mes";
 import { memory } from "mes/mes_bg.wasm";
-import { ControllerState } from "./controller";
+import { Controller, defaultP1 } from "./controller";
 
-class EmulatorState {
+class Emulator {
   private instance: Nes;
   private frameBuffer: Uint8ClampedArray;
   private active: boolean;
   private canvas: CanvasRenderingContext2D;
-  public controller: ControllerState;
+  private controllers: Controller[];
 
-  constructor(context: CanvasRenderingContext2D) {
+  constructor(canvas: HTMLCanvasElement) {
     this.instance = new Nes();
     this.frameBuffer = new Uint8ClampedArray();
-    this.controller = new ControllerState();
+    this.controllers = [new Controller(defaultP1)];
     this.active = false;
-    this.canvas = context;
+    this.canvas = canvas.getContext("2d")!;
   }
 
   setCartridge(bytes: Uint8Array) {
@@ -25,19 +25,42 @@ class EmulatorState {
     this.loop();
   }
 
+  handleKeyEvent(event: KeyboardEvent, state: boolean) {
+    for (let i = 0; i < this.controllers.length; i++) {
+      if (this.controllers[i].handleKeyEvent(event, state)) break;
+    }
+  }
+
+  updateController(id: number, button: number, state: boolean) {
+    this.controllers[id].updateButton(button, state);
+  }
+
   stop() {
     this.active = false;
   }
 
-  private loop() {
-    if (this.active) {
-      this.instance.stepFrame();
-      this.instance.stepVblank();
-      this.instance.setControllerState(0, this.controller.value);
-      this.canvas.putImageData(new ImageData(this.frameBuffer, 256, 240), 0, 0);
-
-      requestAnimationFrame(() => this.loop());
+  private updateControllers() {
+    for (let i = 0; i < this.controllers.length; i++) {
+      const state = this.controllers[i].state();
+      this.instance.setControllerState(i, state);
     }
+  }
+
+  private draw() {
+    const imageData = new ImageData(this.frameBuffer, 256, 240);
+    this.canvas.putImageData(imageData, 0, 0);
+  }
+
+  private loop() {
+    if (!this.active) return;
+
+    this.instance.stepFrame();
+    this.instance.stepVblank();
+
+    this.updateControllers();
+    this.draw();
+
+    requestAnimationFrame(() => this.loop());
   }
 
   private updateFrameBuffer() {
@@ -47,4 +70,4 @@ class EmulatorState {
   }
 }
 
-export { EmulatorState };
+export default Emulator;

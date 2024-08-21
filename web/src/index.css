@@ -4,24 +4,24 @@
 
 @layer utilities {
   .text-hl {
-    @apply text-primary font-semibold;
+    @apply font-semibold text-primary;
   }
 }
 
 @layer components {
   .key {
-    @apply py-1 px-2 text-sm rounded-md text-white bg-secondary;
+    @apply rounded-md bg-secondary px-2 py-1 text-sm text-white;
   }
 
   .arrow-key {
-    @apply flex justify-center rounded-md text-white bg-secondary;
+    @apply flex justify-center rounded-md bg-secondary text-white;
   }
 
   .action-key {
-    @apply w-10 h-10 rounded-full flex justify-center items-center font-semibold text-white bg-primary;
+    @apply flex h-10 w-10 items-center justify-center rounded-full bg-primary font-semibold text-white;
   }
 
   .menu-key {
-    @apply py-2 px-4 rounded-md text-white bg-secondary text-[12px];
+    @apply rounded-md bg-secondary px-4 py-2 text-[12px] text-white;
   }
 }

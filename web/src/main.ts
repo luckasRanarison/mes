@@ -1,120 +1,117 @@
 import "./index.css";
-import { EmulatorState } from "./emulator";
-import { ControllerButton } from "./controller";
 
-const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-const context = canvas.getContext("2d")!;
-const canvasContainer = document.getElementById("canvas-container")!;
-const dragDropArea = document.getElementById("drag-drop-area")!;
-const inputRom = document.getElementById("input-rom") as HTMLInputElement;
-const stopButton = document.getElementById("button-stop")!;
-const fullscreenButton = document.getElementById("button-fullscreen")!;
-const keyUp = document.getElementById("key-up")!;
-const keyDown = document.getElementById("key-down")!;
-const keyLeft = document.getElementById("key-left")!;
-const keyRight = document.getElementById("key-right")!;
-const keySelect = document.getElementById("key-select")!;
-const keyStart = document.getElementById("key-start")!;
-const keyB = document.getElementById("key-b")!;
-const keyA = document.getElementById("key-a")!;
-const popupContainer = document.getElementById("popup-container")!;
-const errorMessgae = document.getElementById("error-message")!;
-const emulator = new EmulatorState(context);
+import Emulator from "./emulator";
+
+const $id = (id: string) => document.getElementById(id)!;
+
+const romInput = $id("input-rom") as HTMLInputElement;
+const canvasElement = $id("canvas") as HTMLCanvasElement;
+const canvasContainer = $id("canvas-container");
+const dragDropElement = $id("drag-drop-area");
+const stopButton = $id("button-stop");
+const fullscreenButton = $id("button-fullscreen");
+
+const emulator = new Emulator(canvasElement);
 
 async function handleUpload(file?: File | null) {
-  if (file) {
-    const buffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
+  if (!file) return;
 
-    try {
-      emulator.setCartridge(bytes);
-      canvasContainer.classList.remove("hidden");
-      dragDropArea.classList.add("hidden");
-    } catch (error) {
-      errorMessgae.innerText = (error as Error)
-        .toString()
-        .replace("Error: ", "");
-      popupContainer.classList.remove("hidden");
-    }
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  try {
+    emulator.setCartridge(bytes);
+    dragDropElement.classList.toggle("hidden");
+    canvasContainer.classList.toggle("hidden");
+  } catch (error: any) {
+    showErrorPopup(error.toString().replace("Error: ", ""));
   }
 }
 
-function handleDragOver(event: DragEvent) {
-  event.preventDefault();
-  dragDropArea.classList.add("bg-smoke");
-}
+function setupControllerHandlers() {
+  window.onkeydown = (event) => {
+    emulator.handleKeyEvent(event, true);
+  };
 
-function handleDragLeave() {
-  dragDropArea.classList.remove("bg-smoke");
-}
+  window.onkeyup = (event) => {
+    emulator.handleKeyEvent(event, false);
+  };
 
-function handleDrop(event: DragEvent) {
-  event.preventDefault();
-  dragDropArea.classList.remove("bg-smoke");
-  handleUpload(event.dataTransfer?.files.item(0));
-}
+  document.querySelectorAll(".button").forEach((element) => {
+    const value = element.getAttribute("value")!;
+    const buttonValue = parseInt(value, 2);
+    const htmlElement = element as HTMLElement;
 
-function handleInputChange() {
-  handleUpload(inputRom.files?.item(0));
-}
+    htmlElement.ontouchstart = (event) => {
+      event.preventDefault();
+      emulator.updateController(0, buttonValue, true);
+    };
 
-function handleStop() {
-  emulator.stop();
-  canvasContainer.classList.toggle("hidden");
-  dragDropArea.classList.toggle("hidden");
-}
-
-function handleFullScreen() {
-  canvas.requestFullscreen();
-}
-
-function handleTouchStart(elemnt: HTMLElement, button: ControllerButton) {
-  elemnt.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    emulator.controller.updateButton(button, true);
+    htmlElement.ontouchend = (event) => {
+      event.preventDefault();
+      emulator.updateController(0, buttonValue, false);
+    };
   });
 }
 
-function handleTouchEnd(elemnt: HTMLElement, button: ControllerButton) {
-  elemnt.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    emulator.controller.updateButton(button, false);
-  });
+function setupDragAndDrop() {
+  dragDropElement.ondragover = (event) => {
+    event.preventDefault();
+    dragDropElement.classList.add("bg-smoke");
+  };
+
+  dragDropElement.ondragleave = () => {
+    dragDropElement.classList.remove("bg-smoke");
+  };
+
+  dragDropElement.ondrop = (event) => {
+    event.preventDefault();
+    dragDropElement.classList.remove("bg-smoke");
+    handleUpload(event.dataTransfer?.files.item(0));
+  };
+
+  romInput.onchange = () => {
+    handleUpload(romInput.files?.item(0));
+  };
 }
 
-function handlePopupClose() {
-  popupContainer.classList.add("hidden");
+function setupEmulatorButtons() {
+  stopButton.onclick = () => {
+    emulator.stop();
+    canvasContainer.classList.toggle("flex");
+    canvasContainer.classList.toggle("hidden");
+    dragDropElement.classList.toggle("hidden");
+  };
+
+  fullscreenButton.onclick = () => {
+    canvasElement.requestFullscreen();
+  };
 }
 
-dragDropArea.addEventListener("dragover", handleDragOver);
-dragDropArea.addEventListener("dragleave", handleDragLeave);
-dragDropArea.addEventListener("drop", handleDrop);
-inputRom.addEventListener("change", handleInputChange);
-stopButton.addEventListener("click", handleStop);
-fullscreenButton.addEventListener("click", handleFullScreen);
-popupContainer.addEventListener("click", handlePopupClose);
+function showErrorPopup(message: string) {
+  const popupElement = document.createElement("div");
 
-window.addEventListener("keydown", (e) =>
-  emulator.controller.update(e.code, true)
-);
-window.addEventListener("keyup", (e) =>
-  emulator.controller.update(e.code, false)
-);
+  popupElement.className =
+    "z-50 inset-0 fixed flex h-screen w-screen items-center justify-center bg-smoke p-4";
 
-handleTouchStart(keyUp, ControllerButton.Up);
-handleTouchStart(keyDown, ControllerButton.Down);
-handleTouchStart(keyLeft, ControllerButton.Left);
-handleTouchStart(keyRight, ControllerButton.Right);
-handleTouchStart(keySelect, ControllerButton.Select);
-handleTouchStart(keyStart, ControllerButton.Start);
-handleTouchStart(keyB, ControllerButton.B);
-handleTouchStart(keyA, ControllerButton.A);
+  popupElement.innerHTML = `
+    <div
+      class="relative flex min-w-[300px] max-w-[400px] flex-col items-center rounded-md border-[1px] border-smoke bg-white px-8 py-6"
+    >
+      <img src="src/assets/error.svg" alt="error" width="50" class="mb-2" />
+      <div class="mb-4 text-xl font-semibold text-primary">Error</div>
+      <div class="mb-6 text-center">${message}</div>
+      <button class="rounded-md bg-primary px-5 py-2 text-white">
+        Close
+      </button>
+    </div>
+  `;
 
-handleTouchEnd(keyUp, ControllerButton.Up);
-handleTouchEnd(keyDown, ControllerButton.Down);
-handleTouchEnd(keyLeft, ControllerButton.Left);
-handleTouchEnd(keyRight, ControllerButton.Right);
-handleTouchEnd(keySelect, ControllerButton.Select);
-handleTouchEnd(keyStart, ControllerButton.Start);
-handleTouchEnd(keyB, ControllerButton.B);
-handleTouchEnd(keyA, ControllerButton.A);
+  popupElement.onclick = () => document.body.removeChild(popupElement);
+
+  document.body.append(popupElement);
+}
+
+setupDragAndDrop();
+setupControllerHandlers();
+setupEmulatorButtons();
