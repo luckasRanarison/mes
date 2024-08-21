@@ -7,7 +7,7 @@ mod register;
 pub mod interrupt;
 
 use address::{Address, AddressMode};
-use opcodes::{Asm, OPCODE_MAP};
+use opcodes::Asm;
 
 use crate::{
     bus::{Bus, DmaState, MainBus},
@@ -22,6 +22,8 @@ use std::{
     fmt,
     ops::{BitAnd, BitOr, BitXor},
 };
+
+use self::opcodes::OPCODES;
 
 const STACK_START: u16 = 0x100;
 
@@ -96,12 +98,9 @@ impl Cpu {
     }
 
     pub fn execute(&mut self, opcode: u8) -> u8 {
-        let Some(opcode) = OPCODE_MAP.get(&opcode) else {
-            panic!("Invalid opcode: {:x}", opcode)
-        };
+        let opcode = OPCODES[opcode as usize];
         let adr_mode = opcode.adr_mode;
         let (address, crossed_boundary) = self.get_address(adr_mode);
-        let mut total_cycle = opcode.cycle + opcode.get_additional_cycles(crossed_boundary);
         let prev_pc = self.pc;
 
         match opcode.asm {
@@ -162,6 +161,7 @@ impl Cpu {
             Asm::BIT => self.bit(address),
             Asm::NOP => self.nop(),
             Asm::ALR => self.alr(address),
+            Asm::ARR => self.arr(address),
             Asm::ANC => self.anc(address),
             Asm::DCP => self.dcp(address),
             Asm::ISB => self.isb(address),
@@ -173,19 +173,17 @@ impl Cpu {
             Asm::SBX => self.sbx(address),
             Asm::SLO => self.slo(address),
             Asm::SRE => self.sre(address),
+            asm => panic!("Unstable opcode: {asm:?}"),
         }
 
-        let has_jumped = prev_pc != self.pc;
+        let jumped = prev_pc != self.pc;
+        let total_cycles = opcode.total_cycles(crossed_boundary, jumped);
 
-        if opcode.is_branching() && has_jumped {
-            total_cycle += 1 + crossed_boundary as u8;
-        }
-
-        if !has_jumped {
+        if !jumped {
             self.increment_pc(opcode.len() - 1);
         }
 
-        total_cycle
+        total_cycles
     }
 
     fn increment_pc(&mut self, value: u8) {
@@ -569,7 +567,7 @@ impl Cpu {
         self.sr.set(StatusFlag::I);
         self.push_stack_u16(self.pc + 2);
         self.push_stack_u8(self.sr.value());
-        self.pc = Interrupt::Irq.get_vector();
+        self.pc = Interrupt::Irq.vector();
     }
 
     fn rti(&mut self) {
@@ -590,6 +588,11 @@ impl Cpu {
     fn alr(&mut self, address: Address) {
         self.and(address);
         self.lsr(address);
+    }
+
+    fn arr(&mut self, address: Address) {
+        self.and(address);
+        self.ror(address);
     }
 
     fn anc(&mut self, address: Address) {
@@ -741,7 +744,7 @@ impl Cpu {
         self.push_stack_u16(self.pc);
         self.push_stack_u8(status);
         self.sr.set(StatusFlag::I);
-        self.pc = self.bus.read_u16(interrupt.get_vector());
+        self.pc = self.bus.read_u16(interrupt.vector());
 
         true
     }
@@ -792,7 +795,7 @@ mod tests {
     use crate::{
         bus::{Bus, MainBus},
         cpu::Cpu,
-        mappers::get_mapper_from_bytes,
+        mappers::MapperChip,
     };
     use std::fs;
 
@@ -834,7 +837,7 @@ mod tests {
     fn test_cpu_nestest() {
         let log = fs::read_to_string("nestest/nestest.log").unwrap();
         let rom = fs::read("nestest/nestest.nes").unwrap();
-        let mapper = get_mapper_from_bytes(&rom).unwrap();
+        let mapper = MapperChip::try_from_bytes(&rom).unwrap();
         let bus = MainBus::new(mapper);
         let mut cpu = Cpu::new(bus);
 

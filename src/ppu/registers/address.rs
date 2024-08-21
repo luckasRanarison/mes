@@ -1,12 +1,12 @@
 // https://www.nesdev.org/wiki/PPU_scrolling
 
+/// yyy NN YYYYY XXXXX
+/// ||| || ||||| +++++-- coarse X scroll
+/// ||| || +++++-------- coarse Y scroll
+/// ||| ++-------------- nametable select
+/// +++----------------- fine Y scroll
 #[derive(Debug, Default, Clone, Copy)]
 pub struct AddressRegister(u16);
-// yyy NN YYYYY XXXXX
-// ||| || ||||| +++++-- coarse X scroll
-// ||| || +++++-------- coarse Y scroll
-// ||| ++-------------- nametable select
-// +++----------------- fine Y scroll
 
 impl AddressRegister {
     pub fn get(&self) -> u16 {

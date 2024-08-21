@@ -4,21 +4,14 @@ mod mapper_002;
 mod mapper_003;
 
 use self::{mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::CnRom};
+
 use crate::{
     cartridge::{create_cartridge_mock, Cartridge, Mirroring},
     error::Error,
     utils::Reset,
 };
+
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
-
-pub type MapperRef = Rc<RefCell<dyn Mapper>>;
-
-fn create_ref<M>(mapper: M) -> MapperRef
-where
-    M: Mapper + 'static,
-{
-    Rc::new(RefCell::new(mapper))
-}
 
 pub trait Mapper: Debug + Reset {
     fn read(&self, address: u16) -> u8;
@@ -26,44 +19,54 @@ pub trait Mapper: Debug + Reset {
     fn get_mirroring(&self) -> Mirroring;
 }
 
-fn get_mapper(cartridge: Cartridge) -> Option<MapperRef> {
-    match cartridge.header.mapper {
-        0 => Some(create_ref(NRom::new(cartridge))),
-        1 => Some(create_ref(SxRom::new(cartridge))),
-        2 => Some(create_ref(UxRom::new(cartridge))),
-        3 => Some(create_ref(CnRom::new(cartridge))),
-        _ => None,
+#[derive(Debug, Clone)]
+pub struct MapperChip(Rc<RefCell<dyn Mapper>>);
+
+impl MapperChip {
+    fn new<M: Mapper + 'static>(mapper: M) -> Self {
+        Self(Rc::new(RefCell::new(mapper)))
+    }
+
+    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Cartridge::try_from_bytes(bytes).and_then(MapperChip::try_from)
     }
 }
 
-pub fn get_mapper_from_bytes(bytes: &[u8]) -> Result<MapperRef, Error> {
-    let cartridge = Cartridge::try_from_bytes(bytes)?;
-    let mapper_id = cartridge.header.mapper;
-    get_mapper(cartridge).ok_or(Error::UnsupportedMapper(mapper_id))
+impl TryFrom<Cartridge> for MapperChip {
+    type Error = Error;
+
+    fn try_from(value: Cartridge) -> Result<Self, Self::Error> {
+        match value.header.mapper {
+            0 => Ok(Self::new(NRom::new(value))),
+            1 => Ok(Self::new(SxRom::new(value))),
+            2 => Ok(Self::new(UxRom::new(value))),
+            3 => Ok(Self::new(CnRom::new(value))),
+            id => Err(Error::UnsupportedMapper(id)),
+        }
+    }
 }
 
-#[allow(unused)]
-pub fn create_mapper_mock() -> MapperRef {
-    let cartridge = create_cartridge_mock();
-    get_mapper(cartridge).unwrap()
-}
-
-impl Mapper for MapperRef {
+impl Mapper for MapperChip {
     fn read(&self, address: u16) -> u8 {
-        self.borrow().read(address)
+        self.0.borrow().read(address)
     }
 
     fn write(&mut self, address: u16, value: u8) {
-        self.borrow_mut().write(address, value)
+        self.0.borrow_mut().write(address, value)
     }
 
     fn get_mirroring(&self) -> Mirroring {
-        self.borrow().get_mirroring()
+        self.0.borrow().get_mirroring()
     }
 }
 
-impl Reset for MapperRef {
+impl Reset for MapperChip {
     fn reset(&mut self) {
-        self.borrow_mut().reset();
+        self.0.borrow_mut().reset()
     }
+}
+
+#[allow(unused)]
+pub fn create_mapper_mock() -> MapperChip {
+    create_cartridge_mock().try_into().unwrap()
 }

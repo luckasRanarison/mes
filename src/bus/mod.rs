@@ -4,7 +4,7 @@ mod ppu;
 use crate::{
     controller::ControllerState,
     cpu::interrupt::Interrupt,
-    mappers::{Mapper, MapperRef},
+    mappers::{Mapper, MapperChip},
     ppu::Ppu,
     utils::{Clock, Reset},
 };
@@ -31,14 +31,14 @@ const RAM_SIZE: usize = 2048;
 pub struct MainBus {
     ram: [u8; RAM_SIZE],
     ppu: Ppu,
-    mapper: MapperRef,
+    mapper: MapperChip,
     dma_adr: Option<u8>,
     cycle: u64,
     controller: ControllerState,
 }
 
 impl MainBus {
-    pub fn new(mapper: MapperRef) -> Self {
+    pub fn new(mapper: MapperChip) -> Self {
         let ppu = Ppu::new(mapper.clone());
         let controller = ControllerState::default();
         let ram = [0; RAM_SIZE];
@@ -93,7 +93,7 @@ impl MainBus {
         self.controller.set_state(id, state);
     }
 
-    pub fn set_mapper(&mut self, mapper: MapperRef) {
+    pub fn set_mapper(&mut self, mapper: MapperChip) {
         self.mapper = mapper.clone();
         self.ppu.bus.set_mapper(mapper);
     }

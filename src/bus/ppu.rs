@@ -1,7 +1,7 @@
 use crate::{
     bus::Bus,
     cartridge::Mirroring,
-    mappers::{Mapper, MapperRef},
+    mappers::{Mapper, MapperChip},
     utils::{Clock, Reset},
 };
 
@@ -12,7 +12,7 @@ const PALETTE_SIZE: usize = 32;
 pub struct PpuBus {
     vram: [u8; VRAM_SIZE],
     palette: [u8; PALETTE_SIZE],
-    mapper: MapperRef,
+    mapper: MapperChip,
 }
 
 impl Bus for PpuBus {
@@ -36,7 +36,7 @@ impl Bus for PpuBus {
 }
 
 impl PpuBus {
-    pub fn new(mapper: MapperRef) -> Self {
+    pub fn new(mapper: MapperChip) -> Self {
         Self {
             vram: [0; VRAM_SIZE],
             palette: [0; PALETTE_SIZE],
@@ -44,7 +44,7 @@ impl PpuBus {
         }
     }
 
-    pub fn set_mapper(&mut self, mapper: MapperRef) {
+    pub fn set_mapper(&mut self, mapper: MapperChip) {
         self.mapper = mapper;
     }
 

@@ -6,7 +6,7 @@ mod registers;
 
 use crate::{
     bus::{Bus, PpuBus},
-    mappers::MapperRef,
+    mappers::MapperChip,
     ppu::registers::*,
     utils::{BitFlag, BitPlane, Clock, Reset},
 };
@@ -60,7 +60,7 @@ pub struct Ppu {
 }
 
 impl Ppu {
-    pub fn new(mapper: MapperRef) -> Self {
+    pub fn new(mapper: MapperChip) -> Self {
         Self {
             bus: PpuBus::new(mapper),
             primary_oam: [0; PRIMARY_OAM_SIZE],

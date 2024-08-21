@@ -10,7 +10,7 @@ pub enum Interrupt {
 }
 
 impl Interrupt {
-    pub fn get_vector(&self) -> u16 {
+    pub fn vector(&self) -> u16 {
         match self {
             Interrupt::Nmi => 0xFFFA,
             Interrupt::Reset => 0xFFFC,

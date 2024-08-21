@@ -12,18 +12,18 @@ enum MaskFlag {
     B1,
 }
 
+/// BGRs bMmG
+/// |||| ||||
+/// |||| |||+- Greyscale (0: normal color, 1: produce a greyscale display)
+/// |||| ||+-- 1: Show background in leftmost 8 pixels of screen, 0: Hide
+/// |||| |+--- 1: Show sprites in leftmost 8 pixels of screen, 0: Hide
+/// |||| +---- 1: Show background
+/// |||+------ 1: Show sprites
+/// ||+------- Emphasize red (green on PAL/Dendy)
+/// |+-------- Emphasize green (red on PAL/Dendy)
+/// +--------- Emphasize blue
 #[derive(Debug, Default)]
 pub struct MaskRegister(u8);
-// BGRs bMmG
-// |||| ||||
-// |||| |||+- Greyscale (0: normal color, 1: produce a greyscale display)
-// |||| ||+-- 1: Show background in leftmost 8 pixels of screen, 0: Hide
-// |||| |+--- 1: Show sprites in leftmost 8 pixels of screen, 0: Hide
-// |||| +---- 1: Show background
-// |||+------ 1: Show sprites
-// ||+------- Emphasize red (green on PAL/Dendy)
-// |+-------- Emphasize green (red on PAL/Dendy)
-// +--------- Emphasize blue
 
 impl MaskRegister {
     pub fn write(&mut self, value: u8) {

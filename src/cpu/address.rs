@@ -10,7 +10,7 @@ impl Address {
     pub fn to_memory_unchecked(self) -> u16 {
         match self {
             Address::Memory(address) => address,
-            Address::Register(_) => panic!(),
+            Address::Register(_) => panic!("Not a memory address"),
         }
     }
 }

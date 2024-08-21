@@ -8,7 +8,6 @@ repository = "https//github.com/luckasRanarison/mes"
 authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
 
 [dependencies]
-lazy_static = "1.4.0"
 thiserror = "1.0.56"
 wasm-bindgen = { version = "0.2.90", optional = true }
 

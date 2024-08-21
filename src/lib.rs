@@ -14,7 +14,7 @@ pub mod error;
 use bus::MainBus;
 use cpu::Cpu;
 use error::Error;
-use mappers::{get_mapper_from_bytes, MapperRef};
+use mappers::MapperChip;
 use utils::Reset;
 
 #[derive(Debug)]
@@ -24,14 +24,14 @@ pub struct Nes {
 
 impl Nes {
     pub fn new(bytes: &[u8]) -> Result<Self, Error> {
-        let mapper = get_mapper_from_bytes(bytes)?;
+        let mapper = MapperChip::try_from_bytes(bytes)?;
         let bus = MainBus::new(mapper);
         let cpu = Cpu::new(bus);
 
         Ok(Self { cpu })
     }
 
-    pub fn with_mapper(mapper: MapperRef) -> Self {
+    pub fn with_mapper(mapper: MapperChip) -> Self {
         let bus = MainBus::new(mapper);
         let cpu = Cpu::new(bus);
 
@@ -39,7 +39,7 @@ impl Nes {
     }
 
     pub fn set_cartridge(&mut self, bytes: &[u8]) -> Result<(), Error> {
-        let mapper = get_mapper_from_bytes(bytes)?;
+        let mapper = MapperChip::try_from_bytes(bytes)?;
         self.cpu.bus.set_mapper(mapper);
 
         Ok(())
