@@ -7,7 +7,7 @@ mod register;
 pub mod interrupt;
 
 use address::{Address, AddressMode};
-use opcodes::Asm;
+use opcodes::{Asm, OPCODES};
 
 use crate::{
     bus::{Bus, DmaState, MainBus},
@@ -22,8 +22,6 @@ use std::{
     fmt,
     ops::{BitAnd, BitOr, BitXor},
 };
-
-use self::opcodes::OPCODES;
 
 const STACK_START: u16 = 0x100;
 

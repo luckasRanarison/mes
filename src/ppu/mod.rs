@@ -559,6 +559,7 @@ mod tests {
 
         ppu.write_addr(0x20);
         ppu.write_addr(0x50);
+
         let buffer = ppu.read_data();
         let data = ppu.read_data();
 

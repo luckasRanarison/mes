@@ -79,6 +79,7 @@ impl PpuBus {
             Mirroring::OneScreen => relative_address & 0x03FF,
             _ => relative_address,
         };
+
         mirrored_address & 0x07FF
     }
 }
@@ -105,6 +106,7 @@ mod tests {
 
         bus.write_u8(0x2000, 0x20);
         bus.write_u8(0x2400, 0x60);
+
         assert_eq!(bus.read_u8(0x2000), 0x20);
         assert_eq!(bus.read_u8(0x2800), 0x20);
         assert_eq!(bus.read_u8(0x2400), 0x60);
@@ -113,6 +115,7 @@ mod tests {
         assert_eq!(bus.vram[0x400], 0x60);
 
         bus.write_u8(0x3F00, 0x10);
+
         assert_eq!(bus.read_u8(0x3F00), 0x10);
         assert_eq!(bus.read_u8(0x3F20), 0x10);
         assert_eq!(bus.palette[0], 0x10);

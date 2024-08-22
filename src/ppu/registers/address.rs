@@ -111,18 +111,22 @@ mod tests {
         let mut t = AddressRegister::default();
 
         t.set_nametable(0b01);
+
         assert_eq!((t.0 >> 10) & 0b11, 0b01);
 
         t.set_coarse_x(0b0111_1101 >> 3);
+
         assert_eq!(t.get_coarse_x(), 0b01111);
 
         t.set_coarse_y(0b01011110 >> 3);
         t.set_fine_y(0b110);
+
         assert_eq!(t.get_coarse_y(), 0b01011);
         assert_eq!(t.get_fine_y(), 0b110);
 
         t.set_high_byte(0b111101);
         t.set_low_byte(0b11110000);
+
         assert_eq!(t.get(), 0b011110111110000);
     }
 
@@ -132,21 +136,25 @@ mod tests {
 
         t.set_coarse_x(30);
         t.scroll_x();
+
         assert_eq!(t.get_coarse_x(), 31);
         assert_eq!((t.0 >> 10) & 0b11, 0b00);
 
         t.scroll_x();
+
         assert_eq!(t.get_coarse_x(), 0);
         assert_eq!((t.0 >> 10) & 0b11, 0b01);
 
         t.set_fine_y(6);
         t.set_coarse_y(29);
         t.scroll_y();
+
         assert_eq!(t.get_fine_y(), 7);
         assert_eq!(t.get_coarse_y(), 29);
         assert_eq!((t.0 >> 10) & 0b11, 0b01);
 
         t.scroll_y();
+
         assert_eq!(t.get_fine_y(), 0);
         assert_eq!(t.get_coarse_y(), 0);
         assert_eq!((t.0 >> 10) & 0b11, 0b11);
