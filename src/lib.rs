@@ -50,26 +50,26 @@ impl Nes {
     }
 
     pub fn step_frame(&mut self) {
-        while !self.cpu.bus.is_vblank() {
+        while !self.cpu.bus.ppu.is_vblank() {
             self.cpu.step();
         }
     }
 
     pub fn step_vblank(&mut self) {
-        while self.cpu.bus.is_vblank() {
+        while self.cpu.bus.ppu.is_vblank() {
             self.cpu.step();
         }
     }
 
     pub fn get_frame_buffer(&self) -> &[u8] {
-        self.cpu.bus.get_frame_buffer()
+        self.cpu.bus.ppu.get_frame_buffer()
     }
 
-    pub fn set_palette(&mut self, palette: &[u8]) {
-        self.cpu.bus.set_palette(palette);
+    pub fn set_palette(&mut self, palette: [u8; 192]) {
+        self.cpu.bus.ppu.set_palette(palette);
     }
 
     pub fn set_controller_state(&mut self, id: usize, state: u8) {
-        self.cpu.bus.set_controller_state(id, state);
+        self.cpu.bus.controller.set_state(id, state);
     }
 }

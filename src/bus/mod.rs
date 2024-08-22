@@ -30,11 +30,11 @@ const RAM_SIZE: usize = 2048;
 #[derive(Debug)]
 pub struct MainBus {
     ram: [u8; RAM_SIZE],
-    ppu: Ppu,
     mapper: MapperChip,
     dma_adr: Option<u8>,
     cycle: u64,
-    controller: ControllerState,
+    pub(crate) ppu: Ppu,
+    pub(crate) controller: ControllerState,
 }
 
 impl MainBus {
@@ -75,22 +75,6 @@ impl MainBus {
             state.buffer = Some(value);
             false
         }
-    }
-
-    pub fn is_vblank(&self) -> bool {
-        self.ppu.is_vblank()
-    }
-
-    pub fn get_frame_buffer(&self) -> &[u8] {
-        self.ppu.get_frame_buffer()
-    }
-
-    pub fn set_palette(&mut self, palette: &[u8]) {
-        self.ppu.set_palette(palette);
-    }
-
-    pub fn set_controller_state(&mut self, id: usize, state: u8) {
-        self.controller.set_state(id, state);
     }
 
     pub fn set_mapper(&mut self, mapper: MapperChip) {

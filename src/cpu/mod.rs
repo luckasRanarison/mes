@@ -346,27 +346,27 @@ impl Cpu {
     }
 
     fn tax(&mut self) {
-        self.transfert(CpuRegister::AC, CpuRegister::X, true);
+        self.transfer(CpuRegister::AC, CpuRegister::X, true);
     }
 
     fn tay(&mut self) {
-        self.transfert(CpuRegister::AC, CpuRegister::Y, true);
+        self.transfer(CpuRegister::AC, CpuRegister::Y, true);
     }
 
     fn tsx(&mut self) {
-        self.transfert(CpuRegister::SP, CpuRegister::X, true);
+        self.transfer(CpuRegister::SP, CpuRegister::X, true);
     }
 
     fn txa(&mut self) {
-        self.transfert(CpuRegister::X, CpuRegister::AC, true);
+        self.transfer(CpuRegister::X, CpuRegister::AC, true);
     }
 
     fn txs(&mut self) {
-        self.transfert(CpuRegister::X, CpuRegister::SP, false);
+        self.transfer(CpuRegister::X, CpuRegister::SP, false);
     }
 
     fn tya(&mut self) {
-        self.transfert(CpuRegister::Y, CpuRegister::AC, true);
+        self.transfer(CpuRegister::Y, CpuRegister::AC, true);
     }
 
     fn pha(&mut self) {
@@ -668,7 +668,7 @@ impl Cpu {
         self.write_address(address, value);
     }
 
-    fn transfert(&mut self, src: CpuRegister, dst: CpuRegister, update_flags: bool) {
+    fn transfer(&mut self, src: CpuRegister, dst: CpuRegister, update_flags: bool) {
         let value = self.read_register(src);
 
         if update_flags {

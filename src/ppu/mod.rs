@@ -1,31 +1,26 @@
 // https://www.nesdev.org/wiki/PPU_programmer_reference
-// https://www.nesdev.org/wiki/PPU_rendering
-// https://www.nesdev.org/wiki/PPU_sprite_evaluation
 
+mod internals;
 mod registers;
 
 use crate::{
     bus::{Bus, PpuBus},
     mappers::MapperChip,
-    ppu::registers::*,
-    utils::{BitFlag, BitPlane, Clock, Reset},
+    ppu::{internals::*, registers::*},
+    utils::{BitFlag, Clock, Reset},
 };
 
 const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;
-const PRIMARY_OAM_SIZE: usize = 256;
-const SECONDARY_OAM_SIZE: usize = 32;
+const PALETTE_SIZE: usize = 192;
+const FRAME_BUFFER_SIZE: usize = SCREEN_WIDTH * SCREEN_HEIGHT * 4;
 
 // Generated from https://bisqwit.iki.fi/utils/nespalette.php
-const NES_PALETTE: &[u8] = include_bytes!("../../palette/nespalette.pal");
+const NES_PALETTE: &[u8; PALETTE_SIZE] = include_bytes!("../../palette/nespalette.pal");
 
 #[derive(Debug)]
 pub struct Ppu {
-    pub(crate) bus: PpuBus,
-    primary_oam: [u8; PRIMARY_OAM_SIZE],
-    secondary_oam: [u8; SECONDARY_OAM_SIZE],
     vram_buffer: u8,
-    oam_addr: u8,
     ctrl: ControlRegister,
     mask: MaskRegister,
     status: StatusRegister,
@@ -33,71 +28,41 @@ pub struct Ppu {
     v_addr: AddressRegister,
     fine_x: u8,
     latch: bool,
-    nmi: Option<bool>,
     cycle: u64,
     dot: u16,
     scanline: u16,
-    frame_buffer: Vec<u8>,
     odd_frame: bool,
-    bg_address: u16,
-    bg_pattern_id: u8,
-    bg_palette_id: u8,
-    bg_pattern: BitPlane<u8>,
-    bg_pattern_shift: BitPlane<u16>,
-    bg_palette_shift: BitPlane<u16>,
-    oam_buffer: u8,
-    primary_oam_index: u8,
-    secondary_oam_index: u8,
-    oam_index_overflow: bool,
-    sp_buffer: [u8; 4],
-    sp_address: u16,
-    sp_pattern_shift: [BitPlane<u8>; 8],
-    sp_attribute_shift: [u8; 8],
-    sp_offset_shift: [u8; 8],
-    sprite_zero_eval: bool,
-    sprite_zero_pixel: bool,
-    palette: Vec<u8>,
+    nmi: Option<bool>,
+    oam: OamData,
+    bg: BackgroundData,
+    sprite: SpriteData,
+    frame_buffer: Box<[u8; FRAME_BUFFER_SIZE]>,
+    palette: [u8; PALETTE_SIZE],
+    pub(crate) bus: PpuBus,
 }
 
 impl Ppu {
     pub fn new(mapper: MapperChip) -> Self {
         Self {
             bus: PpuBus::new(mapper),
-            primary_oam: [0; PRIMARY_OAM_SIZE],
-            secondary_oam: [0; SECONDARY_OAM_SIZE],
-            vram_buffer: 0,
-            oam_addr: 0,
             ctrl: ControlRegister::default(),
             mask: MaskRegister::default(),
             status: StatusRegister::default(),
             t_addr: AddressRegister::default(),
             v_addr: AddressRegister::default(),
+            vram_buffer: 0,
             fine_x: 0,
             latch: false,
-            nmi: None,
             cycle: 0,
             dot: 0,
             scanline: 0,
-            frame_buffer: vec![0; SCREEN_WIDTH * SCREEN_HEIGHT * 4],
             odd_frame: false,
-            bg_address: 0,
-            bg_pattern_id: 0,
-            bg_palette_id: 0,
-            bg_pattern: BitPlane::default(),
-            bg_pattern_shift: BitPlane::default(),
-            bg_palette_shift: BitPlane::default(),
-            oam_buffer: 0,
-            primary_oam_index: 0,
-            secondary_oam_index: 0,
-            oam_index_overflow: false,
-            sp_buffer: [0; 4],
-            sp_address: 0,
-            sp_pattern_shift: [BitPlane::default(); 8],
-            sp_attribute_shift: [0; 8],
-            sp_offset_shift: [0; 8],
-            sprite_zero_eval: false,
-            sprite_zero_pixel: false,
-            palette: NES_PALETTE.to_vec(),
+            nmi: None,
+            oam: OamData::default(),
+            bg: BackgroundData::default(),
+            sprite: SpriteData::default(),
+            frame_buffer: Box::new([0; FRAME_BUFFER_SIZE]),
+            palette: *NES_PALETTE,
         }
     }
 }
@@ -116,8 +81,7 @@ impl Ppu {
     }
 
     pub fn read_oam_data(&self) -> u8 {
-        let address = self.oam_addr as usize;
-        self.primary_oam[address]
+        self.oam.primary[self.oam.address as usize]
     }
 
     pub fn read_data(&mut self) -> u8 {
@@ -149,16 +113,16 @@ impl Ppu {
     }
 
     pub fn write_oam_address(&mut self, value: u8) {
-        self.oam_addr = value;
+        self.oam.address = value;
     }
 
     pub fn write_oam_data(&mut self, value: u8) {
-        self.write_oam(self.oam_addr, value);
-        self.oam_addr = self.oam_addr.wrapping_add(1);
+        self.write_oam(self.oam.address, value);
+        self.oam.address = self.oam.address.wrapping_add(1);
     }
 
     pub fn write_oam(&mut self, address: u8, value: u8) {
-        self.primary_oam[address as usize] = value;
+        self.oam.primary[address as usize] = value;
     }
 
     pub fn write_scroll(&mut self, value: u8) {
@@ -199,11 +163,11 @@ impl Ppu {
     }
 
     pub fn get_frame_buffer(&self) -> &[u8] {
-        &self.frame_buffer
+        self.frame_buffer.as_slice()
     }
 
-    pub fn set_palette(&mut self, palette: &[u8]) {
-        self.palette = palette.to_vec();
+    pub fn set_palette(&mut self, palette: [u8; PALETTE_SIZE]) {
+        self.palette = palette;
     }
 
     fn increment_vram_address(&mut self) {
@@ -211,35 +175,10 @@ impl Ppu {
         self.v_addr.increment(offset);
     }
 
-    fn load_background_shifters(&mut self) {
-        self.bg_pattern_shift.low |= self.bg_pattern.low as u16;
-        self.bg_pattern_shift.high |= self.bg_pattern.high as u16;
-        self.bg_palette_shift.low |= (self.bg_palette_id as u16 & 0b01) * 0xFF;
-        self.bg_palette_shift.high |= (self.bg_palette_id as u16 & 0b10) * 0xFF;
-    }
-
-    fn update_background_shifters(&mut self) {
-        self.bg_pattern_shift.low <<= 1;
-        self.bg_pattern_shift.high <<= 1;
-        self.bg_palette_shift.low <<= 1;
-        self.bg_palette_shift.high <<= 1;
-    }
-
-    fn update_sprite_shifters(&mut self) {
-        for i in 0..8 {
-            if self.sp_offset_shift[i] == 0 {
-                self.sp_pattern_shift[i].low <<= 1;
-                self.sp_pattern_shift[i].high <<= 1;
-            } else {
-                self.sp_offset_shift[i] -= 1;
-            }
-        }
-    }
-
     fn tick_background(&mut self) {
         match self.dot {
             1..=256 | 321..=336 => {
-                self.update_background_shifters();
+                self.bg.update_shifters();
                 self.on_background_dot()
             }
             257 => {
@@ -252,9 +191,9 @@ impl Ppu {
                     self.v_addr.set_y(self.t_addr)
                 }
             }
-            337 | 339 => self.bg_address = self.v_addr.get_nametable_address(),
+            337 | 339 => self.bg.address = self.v_addr.get_nametable_address(),
             338 | 340 => {
-                self.bg_pattern_id = self.bus.read_u8(self.bg_address);
+                self.bg.pattern_id = self.bus.read_u8(self.bg.address);
 
                 if self.dot == 340 && self.scanline == 261 && self.odd_frame {
                     self.dot += 1;
@@ -267,32 +206,32 @@ impl Ppu {
     fn on_background_dot(&mut self) {
         match self.dot % 8 {
             1 => {
-                self.load_background_shifters();
-                self.bg_address = self.v_addr.get_nametable_address();
+                self.bg.load_shifters();
+                self.bg.address = self.v_addr.get_nametable_address();
             }
-            2 => self.bg_pattern_id = self.bus.read_u8(self.bg_address),
-            3 => self.bg_address = self.v_addr.get_attribute_address(),
+            2 => self.bg.pattern_id = self.bus.read_u8(self.bg.address),
+            3 => self.bg.address = self.v_addr.get_attribute_address(),
             4 => {
-                self.bg_palette_id = self.bus.read_u8(self.bg_address);
+                self.bg.palette_id = self.bus.read_u8(self.bg.address);
 
                 if self.v_addr.get_coarse_y() & 2 > 0 {
-                    self.bg_palette_id >>= 4;
+                    self.bg.palette_id >>= 4;
                 }
                 if self.v_addr.get_coarse_x() & 2 > 0 {
-                    self.bg_palette_id >>= 2;
+                    self.bg.palette_id >>= 2;
                 }
 
-                self.bg_palette_id &= 0b11;
+                self.bg.palette_id &= 0b11;
             }
             5 => {
                 let nametable = self.ctrl.get_background_pattern_table_address();
                 let fine_y = self.v_addr.get_fine_y() as u16;
-                self.bg_address = nametable + (self.bg_pattern_id as u16) * 16 + fine_y;
+                self.bg.address = nametable + (self.bg.pattern_id as u16) * 16 + fine_y;
             }
-            6 => self.bg_pattern.low = self.bus.read_u8(self.bg_address),
-            7 => self.bg_address += 8,
-            0 => {
-                self.bg_pattern.high = self.bus.read_u8(self.bg_address);
+            6 => self.bg.pattern.low = self.bus.read_u8(self.bg.address),
+            7 => self.bg.address += 8,
+            _ => {
+                self.bg.pattern.high = self.bus.read_u8(self.bg.address);
 
                 if self.mask.is_rendering() {
                     if self.dot == 256 {
@@ -302,37 +241,36 @@ impl Ppu {
                     self.v_addr.scroll_x();
                 }
             }
-            _ => unreachable!(),
         }
     }
 
     fn tick_sprite(&mut self) {
         if self.dot == 1 {
-            self.secondary_oam_index = 0;
+            self.oam.secondary_index = 0;
         }
 
         if self.dot == 65 {
-            self.primary_oam_index = 0;
-            self.secondary_oam_index = 0;
-            self.oam_index_overflow = false;
+            self.oam.primary_index = 0;
+            self.oam.secondary_index = 0;
+            self.oam.index_overflow = false;
         }
 
         if self.dot >= 1 && self.dot < 256 {
-            self.update_sprite_shifters();
+            self.sprite.update_shifters();
         }
 
         match self.dot {
             1..=64 if self.scanline != 261 => {
                 if self.dot % 2 == 0 {
-                    self.secondary_oam[self.secondary_oam_index as usize] = self.oam_buffer;
-                    self.secondary_oam_index += 1;
+                    self.oam.secondary[self.oam.secondary_index as usize] = self.oam.buffer;
+                    self.oam.secondary_index += 1;
                 } else {
-                    self.oam_buffer = 0xFF;
+                    self.oam.buffer = 0xFF;
                 }
             }
             65..=256 if self.scanline != 261 => {
                 if self.dot % 2 == 1 {
-                    self.oam_buffer = self.primary_oam[self.primary_oam_index as usize];
+                    self.oam.buffer = self.oam.primary[self.oam.primary_index as usize];
                 } else {
                     self.evaluate_sprite();
                 }
@@ -342,76 +280,74 @@ impl Ppu {
         }
     }
 
+    // https://www.nesdev.org/wiki/PPU_sprite_evaluation
     fn evaluate_sprite(&mut self) {
-        if !self.oam_index_overflow && self.secondary_oam_index < 32 {
-            let sprite_y = self.oam_buffer;
+        if !self.oam.index_overflow && self.oam.secondary_index < 32 {
+            let sprite_y = self.oam.buffer;
             let sprite_height = self.ctrl.get_sprite_height() as i16;
             let offset = self.scanline as i16 - sprite_y as i16;
 
             if offset >= 0 && offset < sprite_height {
-                let i = self.secondary_oam_index as usize;
-                let j = self.primary_oam_index as usize;
+                let i = self.oam.secondary_index as usize;
+                let j = self.oam.primary_index as usize;
 
-                self.secondary_oam[i..i + 4].copy_from_slice(&self.primary_oam[j..j + 4]);
-                self.secondary_oam_index += 4;
+                self.oam.secondary[i..i + 4].copy_from_slice(&self.oam.primary[j..j + 4]);
+                self.oam.secondary_index += 4;
 
-                if self.primary_oam_index == 0 {
-                    self.sprite_zero_eval = true;
+                if self.oam.primary_index == 0 {
+                    self.sprite.zero_eval = true;
                 }
             }
         } else {
             self.status.set_sprite_overflow();
         }
 
-        let (index, overflow) = self.primary_oam_index.overflowing_add(4);
-        self.primary_oam_index = index;
-        self.oam_index_overflow |= overflow; // TODO: sprite overflow bug
+        let (index, overflow) = self.oam.primary_index.overflowing_add(4);
+        self.oam.primary_index = index;
+        self.oam.index_overflow |= overflow; // TODO: sprite overflow bug
     }
 
     fn fetch_sprite(&mut self) {
         if self.dot == 257 {
-            self.secondary_oam_index = 0;
+            self.oam.secondary_index = 0;
         }
 
         let cycle = (self.dot - 257) % 8;
         let index = (self.dot as usize - 257) / 8;
-        let oam_value = self.secondary_oam[self.secondary_oam_index as usize];
-        let y = self.sp_buffer[0];
+        let oam_value = self.oam.secondary[self.oam.secondary_index as usize];
+        let y = self.sprite.buffer[0];
 
         match cycle {
-            0..=3 => self.sp_buffer[cycle as usize] = oam_value,
-            4 if y != 0xFF => self.sp_address = self.get_sprite_pattern_address(),
-            5 if y != 0xFF => self.sp_pattern_shift[index].low = self.bus.read_u8(self.sp_address),
-            6 if y != 0xFF => self.sp_address += 8,
+            0..=3 => self.sprite.buffer[cycle as usize] = oam_value,
+            4 if y != 0xFF => self.sprite.address = self.get_sprite_pattern_address(),
+            5 if y != 0xFF => {
+                self.sprite.pattern_shift[index].low = self.bus.read_u8(self.sprite.address)
+            }
+            6 if y != 0xFF => self.sprite.address += 8,
             7 if y != 0xFF => {
-                let attribute = self.sp_buffer[2];
-                let sprite_x = self.sp_buffer[3];
-                self.sp_attribute_shift[index] = attribute;
-                self.sp_offset_shift[index] = sprite_x;
-                self.sp_pattern_shift[index].high = self.bus.read_u8(self.sp_address);
+                let attribute = self.sprite.buffer[2];
+                let sprite_x = self.sprite.buffer[3];
+                self.sprite.attribute_shift[index] = attribute;
+                self.sprite.offset_shift[index] = sprite_x;
+                self.sprite.pattern_shift[index].high = self.bus.read_u8(self.sprite.address);
 
                 if attribute.contains(6) {
-                    self.reverse_sprite_pattern_bits(index); // reverse horizontally
+                    self.sprite.horizontal_reverse(index);
                 }
             }
             _ => {}
         }
 
-        if cycle < 4 && self.secondary_oam_index < 31 {
-            self.secondary_oam_index += 1;
+        if cycle < 4 && self.oam.secondary_index < 31 {
+            self.oam.secondary_index += 1;
         }
-    }
-
-    fn reverse_sprite_pattern_bits(&mut self, index: usize) {
-        self.sp_pattern_shift[index].low = self.sp_pattern_shift[index].low.reverse_bits();
-        self.sp_pattern_shift[index].high = self.sp_pattern_shift[index].high.reverse_bits();
     }
 
     // https://www.nesdev.org/wiki/PPU_OAM#Byte_1
     fn get_sprite_pattern_address(&self) -> u16 {
-        let sprite_y = self.sp_buffer[0];
-        let tile = self.sp_buffer[1];
-        let attribute = self.sp_buffer[2];
+        let sprite_y = self.sprite.buffer[0];
+        let tile = self.sprite.buffer[1];
+        let attribute = self.sprite.buffer[2];
         let height = self.ctrl.get_sprite_height();
         let pattern_table = self.ctrl.get_sprite_pattern_table_address();
         let flip_vertical = attribute.contains(7);
@@ -450,7 +386,7 @@ impl Ppu {
                 (0, _) => (sp_pixel, sp_palette),
                 (_, 0) => (bg_pixel, bg_palette),
                 _ => {
-                    if self.sprite_zero_pixel
+                    if self.sprite.zero_pixel
                         && (self.dot > 8
                             || !(self.mask.show_background_leftmost()
                                 || self.mask.show_sprites_leftmost()))
@@ -476,13 +412,13 @@ impl Ppu {
 
     fn get_background_pixel(&self) -> (u8, u8) {
         let offset = 15 - self.fine_x as u16;
-        let low_pixel = self.bg_pattern_shift.low.get(offset);
-        let high_pixel = self.bg_pattern_shift.high.get(offset);
+        let low_pixel = self.bg.pattern_shift.low.get(offset);
+        let high_pixel = self.bg.pattern_shift.high.get(offset);
         let pixel = (high_pixel << 1) + low_pixel;
         let pixel = if pixel & 3 > 0 { pixel } else { 0 };
 
-        let low_palette = self.bg_palette_shift.low.get(offset);
-        let high_palette = self.bg_palette_shift.high.get(offset);
+        let low_palette = self.bg.palette_shift.low.get(offset);
+        let high_palette = self.bg.palette_shift.high.get(offset);
         let palette = (high_palette << 1) + low_palette;
 
         (pixel as u8, palette as u8)
@@ -490,17 +426,17 @@ impl Ppu {
 
     fn get_sprite_pixel(&mut self) -> (u8, u8, bool) {
         for i in 0..8 {
-            if self.sp_offset_shift[i] == 0 {
-                let attribute = self.sp_attribute_shift[i];
+            if self.sprite.offset_shift[i] == 0 {
+                let attribute = self.sprite.attribute_shift[i];
                 let sp_priority = !attribute.contains(5);
                 let palette = (attribute & 0b11) + 4; // sprite palette offset
-                let pixel_low = self.sp_pattern_shift[i].low.get(7);
-                let pixel_high = self.sp_pattern_shift[i].high.get(7);
+                let pixel_low = self.sprite.pattern_shift[i].low.get(7);
+                let pixel_high = self.sprite.pattern_shift[i].high.get(7);
                 let pixel = (pixel_high << 1) | pixel_low;
 
                 if pixel != 0 {
-                    if self.sprite_zero_eval && i == 0 {
-                        self.sprite_zero_pixel = true;
+                    if self.sprite.zero_eval && i == 0 {
+                        self.sprite.zero_pixel = true;
                     }
 
                     return (pixel, palette, sp_priority);
@@ -523,6 +459,7 @@ impl Ppu {
 }
 
 impl Clock for Ppu {
+    // https://www.nesdev.org/wiki/PPU_rendering
     fn tick(&mut self) {
         self.cycle += 1;
 
@@ -551,8 +488,9 @@ impl Clock for Ppu {
         if self.dot > 340 {
             self.dot %= 341;
             self.scanline += 1;
-            self.sprite_zero_eval = false;
-            self.sprite_zero_pixel = false;
+
+            self.sprite.zero_eval = false;
+            self.sprite.zero_pixel = false;
 
             if self.scanline > 261 {
                 self.scanline = 0;
@@ -565,40 +503,23 @@ impl Clock for Ppu {
 impl Reset for Ppu {
     fn reset(&mut self) {
         self.bus.reset();
-        self.primary_oam = [0; PRIMARY_OAM_SIZE];
-        self.secondary_oam = [0; SECONDARY_OAM_SIZE];
         self.vram_buffer = 0;
-        self.oam_addr = 0;
-        self.ctrl = ControlRegister::default();
-        self.mask = MaskRegister::default();
-        self.status = StatusRegister::default();
-        self.t_addr = AddressRegister::default();
-        self.v_addr = AddressRegister::default();
+        self.ctrl.reset();
+        self.mask.reset();
+        self.status.reset();
+        self.t_addr.reset();
+        self.v_addr.reset();
         self.fine_x = 0;
         self.latch = false;
-        self.nmi.take();
         self.cycle = 0;
         self.dot = 0;
         self.scanline = 0;
-        self.frame_buffer = vec![0; SCREEN_WIDTH * SCREEN_HEIGHT * 4];
         self.odd_frame = false;
-        self.bg_address = 0;
-        self.bg_pattern_id = 0;
-        self.bg_palette_id = 0;
-        self.bg_pattern = BitPlane::default();
-        self.bg_pattern_shift = BitPlane::default();
-        self.bg_palette_shift = BitPlane::default();
-        self.oam_buffer = 0;
-        self.primary_oam_index = 0;
-        self.secondary_oam_index = 0;
-        self.oam_index_overflow = false;
-        self.sp_buffer = [0; 4];
-        self.sp_address = 0;
-        self.sp_pattern_shift = [BitPlane::default(); 8];
-        self.sp_attribute_shift = [0; 8];
-        self.sp_offset_shift = [0; 8];
-        self.sprite_zero_eval = false;
-        self.sprite_zero_pixel = false;
+        self.nmi.take();
+        self.oam.reset();
+        self.sprite.reset();
+        self.bg.reset();
+        self.frame_buffer = Box::new([0; FRAME_BUFFER_SIZE]);
     }
 }
 
@@ -616,9 +537,9 @@ mod tests {
         ppu.write_oam_data(0x20);
         ppu.write_oam_data(0x21);
 
-        assert_eq!(ppu.oam_addr, 0x11);
-        assert_eq!(ppu.primary_oam[0x0F], 0x20);
-        assert_eq!(ppu.primary_oam[0x10], 0x21);
+        assert_eq!(ppu.oam.address, 0x11);
+        assert_eq!(ppu.oam.primary[0x0F], 0x20);
+        assert_eq!(ppu.oam.primary[0x10], 0x21);
     }
 
     #[test]

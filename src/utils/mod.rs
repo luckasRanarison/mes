@@ -60,6 +60,15 @@ pub trait Reset {
     fn reset(&mut self);
 }
 
+impl<T> Reset for T
+where
+    T: Default,
+{
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::BitFlag;

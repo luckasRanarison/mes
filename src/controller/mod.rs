@@ -1,4 +1,4 @@
-use crate::utils::{BitFlag, Reset};
+use crate::utils::BitFlag;
 
 #[derive(Debug, Default)]
 pub struct ControllerState {
@@ -19,12 +19,5 @@ impl ControllerState {
         let value = self.shift[id].get(7);
         self.shift[id] <<= 1;
         value
-    }
-}
-
-impl Reset for ControllerState {
-    fn reset(&mut self) {
-        self.state = [0; 2];
-        self.shift = [0; 2];
     }
 }
