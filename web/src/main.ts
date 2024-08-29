@@ -1,15 +1,14 @@
 import "./index.css";
 
+import ErrorSvg from "./assets/error.svg";
 import Emulator from "./emulator";
 
-const $id = (id: string) => document.getElementById(id)!;
-
-const romInput = $id("input-rom") as HTMLInputElement;
-const canvasElement = $id("canvas") as HTMLCanvasElement;
-const canvasContainer = $id("canvas-container");
-const dragDropElement = $id("drag-drop-area");
-const stopButton = $id("button-stop");
-const fullscreenButton = $id("button-fullscreen");
+const romInput = document.getElementById("input-rom") as HTMLInputElement;
+const canvasElement = document.getElementById("canvas") as HTMLCanvasElement;
+const canvasContainer = document.getElementById("canvas-container")!;
+const dragDropElement = document.getElementById("drag-drop-area")!;
+const stopButton = document.getElementById("button-stop")!;
+const fullscreenButton = document.getElementById("button-fullscreen")!;
 
 const emulator = new Emulator(canvasElement);
 
@@ -89,27 +88,25 @@ function setupEmulatorButtons() {
 }
 
 function showErrorPopup(message: string) {
-  const popupElement = document.createElement("div");
+  const popupContainer = document.createElement("div");
 
-  popupElement.className =
+  popupContainer.className =
     "z-50 inset-0 fixed flex h-screen w-screen items-center justify-center bg-smoke p-4";
 
-  popupElement.innerHTML = `
+  popupContainer.innerHTML = `
     <div
-      class="relative flex min-w-[300px] max-w-[400px] flex-col items-center rounded-md border-[1px] border-smoke bg-white px-8 py-6"
+      class="flex min-w-72 max-w-96 flex-col items-center rounded-md bg-white px-8 py-6"
     >
-      <img src="src/assets/error.svg" alt="error" width="50" class="mb-2" />
+      <img src=${ErrorSvg} alt="error" width="50" class="mb-2" />
       <div class="mb-4 text-xl font-semibold text-primary">Error</div>
       <div class="mb-6 text-center">${message}</div>
-      <button class="rounded-md bg-primary px-5 py-2 text-white">
-        Close
-      </button>
+      <button class="rounded-md bg-primary px-5 py-2 text-white">Close</button>
     </div>
   `;
 
-  popupElement.onclick = () => document.body.removeChild(popupElement);
+  popupContainer.onclick = () => document.body.removeChild(popupContainer);
 
-  document.body.append(popupElement);
+  document.body.append(popupContainer);
 }
 
 setupDragAndDrop();
