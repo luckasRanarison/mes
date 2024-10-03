@@ -8,6 +8,8 @@ class Emulator {
   private active: boolean;
   private canvas: CanvasRenderingContext2D;
   private controllers: Controller[];
+  private frameDuration = 1000 / 60;
+  private lastTimestamp = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new Nes();
@@ -22,7 +24,8 @@ class Emulator {
     this.instance.reset();
     this.active = true;
     this.updateFrameBuffer();
-    this.loop();
+
+    requestAnimationFrame((timestamp) => this.loop(timestamp));
   }
 
   handleKeyEvent(event: KeyboardEvent, state: boolean) {
@@ -51,16 +54,22 @@ class Emulator {
     this.canvas.putImageData(imageData, 0, 0);
   }
 
-  private loop() {
+  private loop(timestamp: number) {
     if (!this.active) return;
 
-    this.instance.stepFrame();
-    this.instance.stepVblank();
+    const deltaTime = timestamp - this.lastTimestamp;
 
-    this.updateControllers();
-    this.draw();
+    if (deltaTime >= this.frameDuration) {
+      this.lastTimestamp = timestamp - (deltaTime % this.frameDuration);
 
-    requestAnimationFrame(() => this.loop());
+      this.instance.stepFrame();
+      this.instance.stepVblank();
+
+      this.updateControllers();
+      this.draw();
+    }
+
+    requestAnimationFrame((timestamp) => this.loop(timestamp));
   }
 
   private updateFrameBuffer() {
