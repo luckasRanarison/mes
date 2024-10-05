@@ -2,6 +2,7 @@ mod frame_counter;
 mod length_counter;
 mod pulse;
 mod sweep;
+mod timer;
 
 use frame_counter::{Frame, FrameCounter};
 use pulse::Pulse;
@@ -44,6 +45,8 @@ impl Clock for Apu {
 impl Apu {
     pub fn new() -> Self {
         Self {
+            pulse1: Pulse::channel1(),
+            pulse2: Pulse::channel2(),
             ..Default::default()
         }
     }
