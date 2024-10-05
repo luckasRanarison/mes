@@ -1,13 +1,16 @@
-use crate::utils::{BitFlag, Clock};
-
-use super::{
-    envelope::Envelope,
-    frame_counter::{ClockHalfFrame, ClockQuarterFrame},
-    length_counter::LengthCounter,
-    sequencer::Sequencer,
-    sweep::Sweep,
-    timer::Timer,
+use crate::{
+    apu::{
+        envelope::Envelope,
+        frame_counter::{ClockHalfFrame, ClockQuarterFrame},
+        length_counter::LengthCounter,
+        sequencer::Sequencer,
+        sweep::Sweep,
+        timer::Timer,
+    },
+    utils::{BitFlag, Clock},
 };
+
+use super::Channel;
 
 const WAVEFORMS: [[u8; 8]; 4] = [
     [0, 1, 0, 0, 0, 0, 0, 0],
@@ -24,29 +27,6 @@ pub struct Pulse {
     timer: Timer,
     sequencer: Sequencer,
     envelope: Envelope,
-}
-
-impl Clock for Pulse {
-    fn tick(&mut self) {
-        self.timer.tick();
-
-        if self.timer.is_zero() {
-            self.sequencer.step();
-        }
-    }
-}
-
-impl ClockHalfFrame for Pulse {
-    fn tick_half(&mut self) {
-        self.length_counter.tick();
-        self.sweep.update_period(&mut self.timer);
-    }
-}
-
-impl ClockQuarterFrame for Pulse {
-    fn tick_quarter(&mut self) {
-        self.envelope.tick();
-    }
 }
 
 impl Pulse {
@@ -66,7 +46,25 @@ impl Pulse {
         }
     }
 
-    pub fn write(&mut self, address: u16, value: u8) {
+    fn is_mute(&self) -> bool {
+        !self.length_counter.active()
+            || self.sweep.target_period(&self.timer) > 0x7FF
+            || self.timer.period < 8
+    }
+}
+
+impl Clock for Pulse {
+    fn tick(&mut self) {
+        self.timer.tick();
+
+        if self.timer.is_zero() {
+            self.sequencer.step();
+        }
+    }
+}
+
+impl Channel for Pulse {
+    fn write(&mut self, address: u16, value: u8) {
         match address % 4 {
             0 => {
                 self.duty_cycle = value.get_range(6..8);
@@ -82,7 +80,7 @@ impl Pulse {
         }
     }
 
-    pub fn sample(&self) -> u8 {
+    fn sample(&self) -> u8 {
         match self.is_mute() {
             false => {
                 let duty = self.duty_cycle as usize;
@@ -93,17 +91,24 @@ impl Pulse {
         }
     }
 
-    pub fn active(&self) -> bool {
+    fn active(&self) -> bool {
         self.length_counter.active()
     }
 
-    pub fn set_enabled(&mut self, value: bool) {
+    fn set_enabled(&mut self, value: bool) {
         self.length_counter.set_enabled(value);
     }
+}
 
-    fn is_mute(&self) -> bool {
-        !self.length_counter.active()
-            || self.sweep.target_period(&self.timer) > 0x7FF
-            || self.timer.period < 8
+impl ClockHalfFrame for Pulse {
+    fn tick_half(&mut self) {
+        self.length_counter.tick();
+        self.sweep.update_period(&mut self.timer);
+    }
+}
+
+impl ClockQuarterFrame for Pulse {
+    fn tick_quarter(&mut self) {
+        self.envelope.tick();
     }
 }

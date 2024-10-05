@@ -1,13 +1,13 @@
+mod channels;
 mod envelope;
 mod frame_counter;
 mod length_counter;
-mod pulse;
 mod sequencer;
 mod sweep;
 mod timer;
 
+use channels::{Channel, Noise, Pulse};
 use frame_counter::{ClockHalfFrame, ClockQuarterFrame, Frame, FrameCounter};
-use pulse::Pulse;
 
 use crate::{
     cpu::interrupt::Interrupt,
@@ -29,6 +29,7 @@ mod status_flag {
 pub struct Apu {
     pulse1: Pulse,
     pulse2: Pulse,
+    noise: Noise,
     frame_counter: FrameCounter,
     odd_cycle: bool,
 }
@@ -48,10 +49,12 @@ impl Clock for Apu {
             Some(Frame::Quarter) => {
                 self.pulse1.tick_quarter();
                 self.pulse2.tick_quarter();
+                self.noise.tick_quarter();
             }
             Some(Frame::Half) => {
                 self.pulse1.tick_half();
                 self.pulse2.tick_half();
+                self.noise.tick_half();
             }
             None => {}
         }
@@ -73,7 +76,7 @@ impl Apu {
         status.update(status_flag::P1, self.pulse1.active());
         status.update(status_flag::P2, self.pulse2.active());
         //status.update(status_flag::T, todo!());
-        //status.update(status_flag::N, todo!());
+        status.update(status_flag::N, self.noise.active());
         //status.update(status_flag::D, todo!());
         status.update(status_flag::F, self.frame_counter.irq());
         //status.update(status_flag::I, todo!());
@@ -89,6 +92,10 @@ impl Apu {
 
     pub fn write_pulse2(&mut self, address: u16, value: u8) {
         self.pulse2.write(address, value);
+    }
+
+    pub fn write_noise(&mut self, address: u16, value: u8) {
+        self.noise.write(address, value);
     }
 
     pub fn write_status(&mut self, value: u8) {
