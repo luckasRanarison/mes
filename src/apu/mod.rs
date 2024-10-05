@@ -35,14 +35,14 @@ pub struct Apu {
 
 impl Clock for Apu {
     fn tick(&mut self) {
-        self.frame_counter.tick();
-
         if self.odd_cycle {
-            self.pulse1.tick_timer();
-            self.pulse2.tick_timer();
+            self.pulse1.tick();
+            self.pulse2.tick();
         }
 
         self.odd_cycle = !self.odd_cycle;
+
+        self.frame_counter.tick();
 
         match self.frame_counter.take_frame() {
             Some(Frame::Quarter) => {

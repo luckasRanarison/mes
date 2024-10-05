@@ -26,6 +26,16 @@ pub struct Pulse {
     envelope: Envelope,
 }
 
+impl Clock for Pulse {
+    fn tick(&mut self) {
+        self.timer.tick();
+
+        if self.timer.is_zero() {
+            self.sequencer.step();
+        }
+    }
+}
+
 impl ClockHalfFrame for Pulse {
     fn tick_half(&mut self) {
         self.length_counter.tick();
@@ -89,14 +99,6 @@ impl Pulse {
 
     pub fn set_enabled(&mut self, value: bool) {
         self.length_counter.set_enabled(value);
-    }
-
-    pub fn tick_timer(&mut self) {
-        self.timer.tick();
-
-        if self.timer.is_zero() {
-            self.sequencer.step();
-        }
     }
 
     fn is_mute(&self) -> bool {
