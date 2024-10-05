@@ -10,6 +10,7 @@ class Emulator {
   private controllers: Controller[];
   private frameDuration = 1000 / 60;
   private lastTimestamp = 0;
+  private audio: AudioContext;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new Nes();
@@ -17,6 +18,7 @@ class Emulator {
     this.controllers = [new Controller(defaultP1)];
     this.active = false;
     this.canvas = canvas.getContext("2d")!;
+    this.audio = new AudioContext();
   }
 
   setCartridge(bytes: Uint8Array) {
@@ -65,6 +67,10 @@ class Emulator {
       this.instance.stepFrame();
       this.instance.stepVblank();
 
+      const rawAudio = this.instance.drainAudioBuffer();
+      const audioBuffer = this.createAudioBuffer(rawAudio);
+
+      this.playAudioBuffer(audioBuffer);
       this.updateControllers();
       this.draw();
     }
@@ -76,6 +82,19 @@ class Emulator {
     const bufStart = this.instance.getFrameBufferPtr();
     const bufSize = 256 * 240 * 4;
     this.frameBuffer = new Uint8ClampedArray(memory.buffer, bufStart, bufSize);
+  }
+
+  private createAudioBuffer(raw: Float32Array) {
+    const buffer = this.audio.createBuffer(1, raw.length, 44100);
+    buffer.copyToChannel(raw, 0);
+    return buffer;
+  }
+
+  private playAudioBuffer(buffer: AudioBuffer) {
+    const source = this.audio.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.audio.destination);
+    source.start();
   }
 }
 

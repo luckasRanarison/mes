@@ -36,7 +36,7 @@ impl Nes {
     }
 
     #[wasm_bindgen(js_name = "drainAudioBuffer")]
-    pub fn drain_audio_buffer(&mut self) -> Vec<f64> {
+    pub fn drain_audio_buffer(&mut self) -> Vec<f32> {
         self.0.drain_audio_buffer()
     }
 

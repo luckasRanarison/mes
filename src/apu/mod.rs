@@ -35,7 +35,7 @@ pub struct Apu {
     noise: Noise,
     frame_counter: FrameCounter,
     cycle: u64,
-    buffer: Vec<f64>,
+    buffer: Vec<f32>,
 }
 
 impl Apu {
@@ -96,16 +96,16 @@ impl Apu {
         self.frame_counter.irq().then_some(Interrupt::Irq)
     }
 
-    pub fn drain_buffer(&mut self) -> Vec<f64> {
+    pub fn drain_buffer(&mut self) -> Vec<f32> {
         self.buffer.drain(..).collect()
     }
 
     // https://www.nesdev.org/wiki/APU_Mixer
-    fn get_sample(&self) -> f64 {
-        let p1 = self.pulse1.get_sample() as f64;
-        let p2 = self.pulse1.get_sample() as f64;
-        let t = self.triangle.get_sample() as f64;
-        let n = self.noise.get_sample() as f64;
+    fn get_sample(&self) -> f32 {
+        let p1 = self.pulse1.get_sample() as f32;
+        let p2 = self.pulse1.get_sample() as f32;
+        let t = self.triangle.get_sample() as f32;
+        let n = self.noise.get_sample() as f32;
         let d = 0.; // TODO: DMC
 
         let pulse_out = 95.88 / ((8128. / (p1 + p2)) + 100.);
