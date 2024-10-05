@@ -1,15 +1,16 @@
 use crate::utils::BitFlag;
 
 #[allow(unused)]
-enum ControlFlag {
-    N0,
-    N1,
-    I,
-    S,
-    B,
-    H,
-    P,
-    V,
+#[rustfmt::skip]
+mod control_flag {
+    pub const N0: u8 = 0;
+    pub const N1: u8 = 1;
+    pub const I : u8 = 2;
+    pub const S : u8 = 3;
+    pub const B : u8 = 4;
+    pub const H : u8 = 5;
+    pub const P : u8 = 6;
+    pub const V : u8 = 7;
 }
 
 /// VPHB SINN
@@ -35,46 +36,38 @@ impl ControlRegister {
     }
 
     pub fn get_nametable_bits(&self) -> u8 {
-        self.get(ControlFlag::N1) * 2 + self.get(ControlFlag::N0)
+        self.0.get(control_flag::N1) * 2 + self.0.get(control_flag::N0)
     }
 
     pub fn get_vram_increment_value(&self) -> u8 {
-        match self.contains(ControlFlag::I) {
+        match self.0.contains(control_flag::I) {
             true => 32,
             false => 1,
         }
     }
 
     pub fn get_sprite_pattern_table_address(&self) -> u16 {
-        match self.contains(ControlFlag::S) {
+        match self.0.contains(control_flag::S) {
             true => 0x1000,
             false => 0x0000,
         }
     }
 
     pub fn get_background_pattern_table_address(&self) -> u16 {
-        match self.get(ControlFlag::B) == 1 {
+        match self.0.get(control_flag::B) == 1 {
             true => 0x1000,
             false => 0x0000,
         }
     }
 
     pub fn get_sprite_height(&self) -> u8 {
-        match self.contains(ControlFlag::H) {
+        match self.0.contains(control_flag::H) {
             true => 16,
             false => 8,
         }
     }
 
     pub fn generate_nmi(&self) -> bool {
-        self.contains(ControlFlag::V)
-    }
-
-    fn get(&self, flag: ControlFlag) -> u8 {
-        self.0.get(flag as u8)
-    }
-
-    fn contains(&self, flag: ControlFlag) -> bool {
-        self.0.contains(flag as u8)
+        self.0.contains(control_flag::V)
     }
 }

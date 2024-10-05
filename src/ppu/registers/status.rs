@@ -1,14 +1,9 @@
 use crate::utils::BitFlag;
 
-enum StatusFlag {
-    // __,
-    // __,
-    // __,
-    // __,
-    // __,
-    O = 5,
-    S = 6,
-    V = 7,
+mod status_flag {
+    pub const O: u8 = 5;
+    pub const S: u8 = 6;
+    pub const V: u8 = 7;
 }
 
 /// VSO. ....
@@ -37,34 +32,26 @@ impl StatusRegister {
     }
 
     pub fn set_vblank(&mut self) {
-        self.update(StatusFlag::V, true);
+        self.0.update(status_flag::V, true);
     }
 
     pub fn set_sprite_overflow(&mut self) {
-        self.update(StatusFlag::O, true);
+        self.0.update(status_flag::O, true);
     }
 
     pub fn set_sprite_zero_hit(&mut self) {
-        self.update(StatusFlag::S, true);
+        self.0.update(status_flag::S, true);
     }
 
     pub fn clear_vblank(&mut self) {
-        self.update(StatusFlag::V, false);
+        self.0.update(status_flag::V, false);
     }
 
     pub fn is_vblank(&self) -> bool {
-        self.contains(StatusFlag::V)
-    }
-
-    fn update(&mut self, flag: StatusFlag, state: bool) {
-        self.0.update(flag as u8, state);
+        self.0.contains(status_flag::V)
     }
 
     pub fn clear(&mut self) {
         self.0 &= 0b0001_1111;
-    }
-
-    fn contains(&self, flag: StatusFlag) -> bool {
-        self.0.contains(flag as u8)
     }
 }
