@@ -1,4 +1,5 @@
 mod frame_counter;
+mod sweep;
 
 use frame_counter::{Frame, FrameCounter};
 
@@ -7,14 +8,15 @@ use crate::{
     utils::{BitFlag, Clock},
 };
 
+#[rustfmt::skip]
 mod status_flag {
     pub const P1: u8 = 0;
     pub const P2: u8 = 1;
-    pub const T: u8 = 2;
-    pub const N: u8 = 3;
-    pub const D: u8 = 4;
-    pub const F: u8 = 6;
-    pub const I: u8 = 7;
+    pub const T : u8 = 2;
+    pub const N : u8 = 3;
+    pub const D : u8 = 4;
+    pub const F : u8 = 6;
+    pub const I : u8 = 7;
 }
 
 #[derive(Debug, Default)]

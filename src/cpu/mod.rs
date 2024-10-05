@@ -64,6 +64,7 @@ impl Cpu {
 
         for _ in 0..cycles {
             self.cycle += 1;
+            self.apu.borrow_mut().tick();
             self.bus.tick();
         }
     }
