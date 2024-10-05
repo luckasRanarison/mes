@@ -6,7 +6,7 @@ mod sequencer;
 mod sweep;
 mod timer;
 
-use channels::{Channel, Noise, Pulse};
+use channels::{Channel, Noise, Pulse, Triangle};
 use frame_counter::{ClockFrame, FrameCounter};
 
 use crate::{
@@ -29,28 +29,10 @@ mod status_flag {
 pub struct Apu {
     pulse1: Pulse,
     pulse2: Pulse,
+    triangle: Triangle,
     noise: Noise,
     frame_counter: FrameCounter,
     odd_cycle: bool,
-}
-
-impl Clock for Apu {
-    fn tick(&mut self) {
-        if self.odd_cycle {
-            self.pulse1.tick();
-            self.pulse2.tick();
-        }
-
-        self.odd_cycle = !self.odd_cycle;
-
-        self.frame_counter.tick();
-
-        if let Some(frame) = self.frame_counter.take_frame() {
-            self.pulse1.tick_frame(&frame);
-            self.pulse2.tick_frame(&frame);
-            self.noise.tick_frame(&frame);
-        }
-    }
 }
 
 impl Apu {
@@ -58,6 +40,7 @@ impl Apu {
         Self {
             pulse1: Pulse::channel1(),
             pulse2: Pulse::channel2(),
+            triangle: Triangle::new(),
             noise: Noise::new(),
             ..Default::default()
         }
@@ -68,7 +51,7 @@ impl Apu {
 
         status.update(status_flag::P1, self.pulse1.is_active());
         status.update(status_flag::P2, self.pulse2.is_active());
-        //status.update(status_flag::T, todo!());
+        status.update(status_flag::T, self.triangle.is_active());
         status.update(status_flag::N, self.noise.is_active());
         //status.update(status_flag::D, todo!());
         status.update(status_flag::F, self.frame_counter.irq());
@@ -87,6 +70,10 @@ impl Apu {
         self.pulse2.write_register(address, value);
     }
 
+    pub fn write_triangle(&mut self, address: u16, value: u8) {
+        self.triangle.write_register(address, value);
+    }
+
     pub fn write_noise(&mut self, address: u16, value: u8) {
         self.noise.write_register(address, value);
     }
@@ -94,6 +81,8 @@ impl Apu {
     pub fn write_status(&mut self, value: u8) {
         self.pulse1.set_enabled(value.contains(status_flag::P1));
         self.pulse2.set_enabled(value.contains(status_flag::P2));
+        self.triangle.set_enabled(value.contains(status_flag::T));
+        self.noise.set_enabled(value.contains(status_flag::N));
     }
 
     pub fn write_frame_counter(&mut self, value: u8) {
@@ -102,5 +91,28 @@ impl Apu {
 
     pub fn poll_irq(&self) -> Option<Interrupt> {
         self.frame_counter.irq().then_some(Interrupt::Irq)
+    }
+}
+
+impl Clock for Apu {
+    fn tick(&mut self) {
+        self.triangle.tick();
+
+        if self.odd_cycle {
+            self.pulse1.tick();
+            self.pulse2.tick();
+            self.noise.tick();
+        }
+
+        self.odd_cycle = !self.odd_cycle;
+
+        self.frame_counter.tick();
+
+        if let Some(frame) = self.frame_counter.take_frame() {
+            self.pulse1.tick_frame(&frame);
+            self.pulse2.tick_frame(&frame);
+            self.triangle.tick_frame(&frame);
+            self.noise.tick_frame(&frame);
+        }
     }
 }

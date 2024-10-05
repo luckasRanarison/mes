@@ -1,8 +1,10 @@
 mod noise;
 mod pulse;
+mod triangle;
 
 pub use noise::Noise;
 pub use pulse::Pulse;
+pub use triangle::Triangle;
 
 pub trait Channel {
     fn write_register(&mut self, address: u16, value: u8);
