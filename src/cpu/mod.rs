@@ -14,7 +14,7 @@ use crate::{
     bus::{Bus, DmaState, MainBus},
     cpu::{
         interrupt::{Interrupt, INTERRUPT_LATENCY},
-        register::{CpuRegister, StatusFlag, StatusRegister},
+        register::{status_flag, CpuRegister, StatusRegister},
     },
     utils::{BitFlag, Clock, Reset},
 };
@@ -382,7 +382,7 @@ impl Cpu {
 
     fn php(&mut self) {
         let mut status = self.sr.value();
-        status.set(StatusFlag::B as u8);
+        status.set(status_flag::B);
         self.push_stack_u8(status);
     }
 
@@ -395,8 +395,8 @@ impl Cpu {
 
     fn plp(&mut self) {
         let status = (self.pull_stack_u8() & 0b1100_1111)
-            | ((self.sr.get(StatusFlag::B)) << 4)
-            | (self.sr.get(StatusFlag::__) << 5);
+            | ((self.sr.get(status_flag::B)) << 4)
+            | (self.sr.get(status_flag::__) << 5);
         self.sr.assign(status);
     }
 
@@ -449,7 +449,7 @@ impl Cpu {
     fn asl(&mut self, address: Address) {
         let operand = self.read_address(address);
         let result = operand.wrapping_shl(1);
-        self.sr.update(StatusFlag::C, operand >> 7 == 1);
+        self.sr.update(status_flag::C, operand >> 7 == 1);
         self.sr.update_negative(result);
         self.sr.update_zero(result);
         self.write_address(address, result);
@@ -458,7 +458,7 @@ impl Cpu {
     fn lsr(&mut self, address: Address) {
         let operand = self.read_address(address);
         let result = operand.wrapping_shr(1);
-        self.sr.update(StatusFlag::C, operand << 7 == 128);
+        self.sr.update(status_flag::C, operand << 7 == 128);
         self.sr.update_negative(result);
         self.sr.update_zero(result);
         self.write_address(address, result);
@@ -466,9 +466,9 @@ impl Cpu {
 
     fn rol(&mut self, address: Address) {
         let operand = self.read_address(address);
-        let carry_bit = self.sr.get(StatusFlag::C);
+        let carry_bit = self.sr.get(status_flag::C);
         let result = operand.wrapping_shl(1) | carry_bit;
-        self.sr.update(StatusFlag::C, operand >> 7 == 1);
+        self.sr.update(status_flag::C, operand >> 7 == 1);
         self.sr.update_negative(result);
         self.sr.update_zero(result);
         self.write_address(address, result);
@@ -476,40 +476,40 @@ impl Cpu {
 
     fn ror(&mut self, address: Address) {
         let operand = self.read_address(address);
-        let carry_bit = self.sr.get(StatusFlag::C);
+        let carry_bit = self.sr.get(status_flag::C);
         let result = operand.wrapping_shr(1) | (carry_bit << 7);
-        self.sr.update(StatusFlag::C, operand & 1 == 1);
+        self.sr.update(status_flag::C, operand & 1 == 1);
         self.sr.update_negative(result);
         self.sr.update_zero(result);
         self.write_address(address, result);
     }
 
     fn clc(&mut self) {
-        self.sr.clear(StatusFlag::C);
+        self.sr.clear(status_flag::C);
     }
 
     fn cld(&mut self) {
-        self.sr.clear(StatusFlag::D);
+        self.sr.clear(status_flag::D);
     }
 
     fn cli(&mut self) {
-        self.sr.clear(StatusFlag::I);
+        self.sr.clear(status_flag::I);
     }
 
     fn clv(&mut self) {
-        self.sr.clear(StatusFlag::V);
+        self.sr.clear(status_flag::V);
     }
 
     fn sec(&mut self) {
-        self.sr.set(StatusFlag::C);
+        self.sr.set(status_flag::C);
     }
 
     fn sei(&mut self) {
-        self.sr.set(StatusFlag::I);
+        self.sr.set(status_flag::I);
     }
 
     fn sed(&mut self) {
-        self.sr.set(StatusFlag::D);
+        self.sr.set(status_flag::D);
     }
 
     fn cmp(&mut self, address: Address) {
@@ -525,35 +525,35 @@ impl Cpu {
     }
 
     fn bcc(&mut self, address: Address) {
-        self.branch(!self.sr.contains(StatusFlag::C), address);
+        self.branch(!self.sr.contains(status_flag::C), address);
     }
 
     fn bcs(&mut self, address: Address) {
-        self.branch(self.sr.contains(StatusFlag::C), address);
+        self.branch(self.sr.contains(status_flag::C), address);
     }
 
     fn beq(&mut self, address: Address) {
-        self.branch(self.sr.contains(StatusFlag::Z), address);
+        self.branch(self.sr.contains(status_flag::Z), address);
     }
 
     fn bmi(&mut self, address: Address) {
-        self.branch(self.sr.contains(StatusFlag::N), address);
+        self.branch(self.sr.contains(status_flag::N), address);
     }
 
     fn bne(&mut self, address: Address) {
-        self.branch(!self.sr.contains(StatusFlag::Z), address);
+        self.branch(!self.sr.contains(status_flag::Z), address);
     }
 
     fn bpl(&mut self, address: Address) {
-        self.branch(!self.sr.contains(StatusFlag::N), address);
+        self.branch(!self.sr.contains(status_flag::N), address);
     }
 
     fn bvc(&mut self, address: Address) {
-        self.branch(!self.sr.contains(StatusFlag::V), address);
+        self.branch(!self.sr.contains(status_flag::V), address);
     }
 
     fn bvs(&mut self, address: Address) {
-        self.branch(self.sr.contains(StatusFlag::V), address);
+        self.branch(self.sr.contains(status_flag::V), address);
     }
 
     fn jmp(&mut self, address: Address) {
@@ -570,8 +570,8 @@ impl Cpu {
     }
 
     fn brk(&mut self) {
-        self.sr.set(StatusFlag::B);
-        self.sr.set(StatusFlag::I);
+        self.sr.set(status_flag::B);
+        self.sr.set(status_flag::I);
         self.push_stack_u16(self.pc + 2);
         self.push_stack_u8(self.sr.value());
         self.pc = Interrupt::Irq.vector();
@@ -587,7 +587,7 @@ impl Cpu {
         let result = self.ac & rhs;
         self.sr.update_zero(result);
         self.sr.update_negative(rhs);
-        self.sr.update(StatusFlag::V, (rhs >> 6 & 1) == 1);
+        self.sr.update(status_flag::V, (rhs >> 6 & 1) == 1);
     }
 
     fn nop(&self) {}
@@ -604,7 +604,7 @@ impl Cpu {
 
     fn anc(&mut self, address: Address) {
         self.and(address);
-        self.sr.update(StatusFlag::C, self.ac.contains(7));
+        self.sr.update(status_flag::C, self.ac.contains(7));
     }
 
     fn las(&mut self, address: Address) {
@@ -627,7 +627,7 @@ impl Cpu {
         let rhs = self.read_address(address);
         let (sum, c1) = lhs.overflowing_add(!rhs);
         let (sum, c2) = sum.overflowing_add(1);
-        self.sr.update(StatusFlag::C, c1 || c2);
+        self.sr.update(status_flag::C, c1 || c2);
         self.sr.update_negative(sum);
         self.sr.update_zero(sum);
         self.x = sum;
@@ -701,13 +701,13 @@ impl Cpu {
     }
 
     fn add_to_accumulator(&mut self, value: u8) {
-        let carry = self.sr.get(StatusFlag::C);
+        let carry = self.sr.get(status_flag::C);
         let (sum, c1) = self.ac.overflowing_add(value);
         let (sum, c2) = sum.overflowing_add(carry);
         let signed_sum = (self.ac as i8 as i16) + (value as i8 as i16) + carry as i16;
         let overflow = !(-128..=127).contains(&signed_sum);
-        self.sr.update(StatusFlag::C, c1 || c2);
-        self.sr.update(StatusFlag::V, overflow);
+        self.sr.update(status_flag::C, c1 || c2);
+        self.sr.update(status_flag::V, overflow);
         self.sr.update_negative(sum);
         self.sr.update_zero(sum);
         self.ac = sum;
@@ -729,7 +729,7 @@ impl Cpu {
         let rhs = self.read_address(address);
         let (sum, c1) = lhs.overflowing_add(!rhs);
         let (sum, c2) = sum.overflowing_add(1);
-        self.sr.update(StatusFlag::C, c1 || c2);
+        self.sr.update(status_flag::C, c1 || c2);
         self.sr.update_negative(sum);
         self.sr.update_zero(sum);
     }
@@ -741,16 +741,16 @@ impl Cpu {
     }
 
     fn handle_interrupt(&mut self, interrupt: Interrupt) -> bool {
-        if interrupt == Interrupt::Irq && self.sr.contains(StatusFlag::I) {
+        if interrupt == Interrupt::Irq && self.sr.contains(status_flag::I) {
             return false;
         }
 
         let mut status = self.sr.value();
-        status.clear(StatusFlag::B as u8);
-        status.set(StatusFlag::__ as u8);
+        status.clear(status_flag::B);
+        status.set(status_flag::__);
         self.push_stack_u16(self.pc);
         self.push_stack_u8(status);
-        self.sr.set(StatusFlag::I);
+        self.sr.set(status_flag::I);
         self.pc = self.bus.read_u16(interrupt.vector());
 
         true
@@ -767,14 +767,14 @@ impl fmt::Debug for Cpu {
         writeln!(
             f,
             "  sr: {{ N: {}, V: {}, _: {}, B: {}, D: {}, I: {}, Z: {}, C: {} }},",
-            self.sr.get(StatusFlag::N),
-            self.sr.get(StatusFlag::V),
-            self.sr.get(StatusFlag::__),
-            self.sr.get(StatusFlag::B),
-            self.sr.get(StatusFlag::D),
-            self.sr.get(StatusFlag::I),
-            self.sr.get(StatusFlag::Z),
-            self.sr.get(StatusFlag::C)
+            self.sr.get(status_flag::N),
+            self.sr.get(status_flag::V),
+            self.sr.get(status_flag::__),
+            self.sr.get(status_flag::B),
+            self.sr.get(status_flag::D),
+            self.sr.get(status_flag::I),
+            self.sr.get(status_flag::Z),
+            self.sr.get(status_flag::C)
         )?;
         writeln!(f, "  sp: 0x{:x},", self.sp)?;
         writeln!(f, "  cycle: {}", self.cycle)?;

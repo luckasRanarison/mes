@@ -1,15 +1,16 @@
 use crate::utils::BitFlag;
 
 #[allow(unused)]
-enum MaskFlag {
-    G0,
-    M0,
-    M1,
-    B0,
-    S,
-    R,
-    G1,
-    B1,
+#[rustfmt::skip]
+mod mask_flag {
+    pub const G0: u8 = 0;
+    pub const M0: u8 = 1;
+    pub const M1: u8 = 2;
+    pub const B0: u8 = 3;
+    pub const S:  u8 = 4;
+    pub const R:  u8 = 5;
+    pub const G1: u8 = 6;
+    pub const B1: u8 = 7;
 }
 
 /// BGRs bMmG
@@ -35,22 +36,18 @@ impl MaskRegister {
     }
 
     pub fn show_background_leftmost(&self) -> bool {
-        self.contains(MaskFlag::M0)
+        self.0.contains(mask_flag::M0)
     }
 
     pub fn show_sprites_leftmost(&self) -> bool {
-        self.contains(MaskFlag::M1)
+        self.0.contains(mask_flag::M1)
     }
 
     pub fn show_background(&self) -> bool {
-        self.contains(MaskFlag::B0)
+        self.0.contains(mask_flag::B0)
     }
 
     pub fn show_sprites(&self) -> bool {
-        self.contains(MaskFlag::S)
-    }
-
-    fn contains(&self, flag: MaskFlag) -> bool {
-        self.0.contains(flag as u8)
+        self.0.contains(mask_flag::S)
     }
 }
