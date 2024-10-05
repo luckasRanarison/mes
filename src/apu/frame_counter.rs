@@ -2,16 +2,9 @@
 
 use crate::utils::{BitFlag, Clock};
 
-#[derive(Debug)]
-enum Flag {
-    //_,
-    //_,
-    //_,
-    //_,
-    //_,
-    //_,
-    I = 6,
-    M = 7,
+mod status_flag {
+    pub const I: u8 = 6;
+    pub const M: u8 = 7;
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -62,7 +55,7 @@ impl Clock for FrameCounter {
 impl FrameCounter {
     pub fn write(&mut self, value: u8) {
         self.flags = value;
-        self.interrupt = !value.contains(Flag::I as u8);
+        self.interrupt = !value.contains(status_flag::I);
         self.sequencer = 0; // FIXME: apply 3-4 cycle delay
     }
 
@@ -79,14 +72,14 @@ impl FrameCounter {
     }
 
     fn sequencer_mode(&self) -> Mode {
-        match self.flags.contains(Flag::M as u8) {
+        match self.flags.contains(status_flag::M) {
             true => Mode::FiveSteps,
             false => Mode::FourSteps,
         }
     }
 
     fn set_interrupt(&mut self) {
-        if !self.flags.contains(Flag::I as u8) {
+        if !self.flags.contains(status_flag::I) {
             self.interrupt = true;
         }
     }
