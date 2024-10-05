@@ -66,10 +66,10 @@ impl Apu {
     pub fn read_status(&mut self) -> u8 {
         let mut status = 0;
 
-        status.update(status_flag::P1, self.pulse1.active());
-        status.update(status_flag::P2, self.pulse2.active());
+        status.update(status_flag::P1, self.pulse1.is_active());
+        status.update(status_flag::P2, self.pulse2.is_active());
         //status.update(status_flag::T, todo!());
-        status.update(status_flag::N, self.noise.active());
+        status.update(status_flag::N, self.noise.is_active());
         //status.update(status_flag::D, todo!());
         status.update(status_flag::F, self.frame_counter.irq());
         //status.update(status_flag::I, todo!());
@@ -80,15 +80,15 @@ impl Apu {
     }
 
     pub fn write_pulse1(&mut self, address: u16, value: u8) {
-        self.pulse1.write(address, value);
+        self.pulse1.write_register(address, value);
     }
 
     pub fn write_pulse2(&mut self, address: u16, value: u8) {
-        self.pulse2.write(address, value);
+        self.pulse2.write_register(address, value);
     }
 
     pub fn write_noise(&mut self, address: u16, value: u8) {
-        self.noise.write(address, value);
+        self.noise.write_register(address, value);
     }
 
     pub fn write_status(&mut self, value: u8) {

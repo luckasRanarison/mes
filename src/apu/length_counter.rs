@@ -27,7 +27,7 @@ impl LengthCounter {
         self.enabled = value;
     }
 
-    pub fn active(&self) -> bool {
+    pub fn is_active(&self) -> bool {
         self.enabled && self.counter > 0
     }
 }

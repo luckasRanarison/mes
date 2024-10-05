@@ -33,7 +33,7 @@ impl Noise {
 }
 
 impl Channel for Noise {
-    fn write(&mut self, address: u16, value: u8) {
+    fn write_register(&mut self, address: u16, value: u8) {
         match address % 4 {
             0 => {
                 self.envolope.write(value);
@@ -49,12 +49,12 @@ impl Channel for Noise {
         }
     }
 
-    fn sample(&self) -> u8 {
+    fn raw_sample(&self) -> u8 {
         self.envolope.volume()
     }
 
-    fn active(&self) -> bool {
-        self.length_counter.active()
+    fn is_active(&self) -> bool {
+        self.length_counter.is_active()
     }
 
     fn set_enabled(&mut self, value: bool) {
@@ -62,7 +62,7 @@ impl Channel for Noise {
     }
 
     fn is_mute(&self) -> bool {
-        !self.length_counter.active() || self.shift.contains(0)
+        !self.length_counter.is_active() || self.shift.contains(0)
     }
 }
 
