@@ -47,7 +47,7 @@ impl Sweep {
         }
     }
 
-    fn target_period(&self, timer: &Timer) -> u16 {
+    pub fn target_period(&self, timer: &Timer) -> u16 {
         let period = timer.period;
         let sweep_value = period >> self.shift;
 

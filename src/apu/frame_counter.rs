@@ -13,6 +13,14 @@ enum Mode {
     FiveSteps,
 }
 
+pub trait ClockHalfFrame {
+    fn tick_half(&mut self);
+}
+
+pub trait ClockQuarterFrame {
+    fn tick_quarter(&mut self);
+}
+
 #[derive(Debug)]
 pub enum Frame {
     Quarter,

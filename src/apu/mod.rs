@@ -2,10 +2,11 @@ mod envelope;
 mod frame_counter;
 mod length_counter;
 mod pulse;
+mod sequencer;
 mod sweep;
 mod timer;
 
-use frame_counter::{Frame, FrameCounter};
+use frame_counter::{ClockHalfFrame, ClockQuarterFrame, Frame, FrameCounter};
 use pulse::Pulse;
 
 use crate::{
@@ -29,15 +30,29 @@ pub struct Apu {
     pulse1: Pulse,
     pulse2: Pulse,
     frame_counter: FrameCounter,
+    odd_cycle: bool,
 }
 
 impl Clock for Apu {
     fn tick(&mut self) {
         self.frame_counter.tick();
 
+        if self.odd_cycle {
+            self.pulse1.tick_timer();
+            self.pulse2.tick_timer();
+        }
+
+        self.odd_cycle = !self.odd_cycle;
+
         match self.frame_counter.take_frame() {
-            Some(Frame::Quarter) => todo!(),
-            Some(Frame::Half) => todo!(),
+            Some(Frame::Quarter) => {
+                self.pulse1.tick_quarter();
+                self.pulse2.tick_quarter();
+            }
+            Some(Frame::Half) => {
+                self.pulse1.tick_half();
+                self.pulse2.tick_half();
+            }
             None => {}
         }
     }

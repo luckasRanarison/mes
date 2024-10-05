@@ -1,6 +1,13 @@
-use crate::utils::BitFlag;
+use crate::utils::{BitFlag, Clock};
 
-use super::{envelope::Envelope, length_counter::LengthCounter, sweep::Sweep, timer::Timer};
+use super::{
+    envelope::Envelope,
+    frame_counter::{ClockHalfFrame, ClockQuarterFrame},
+    length_counter::LengthCounter,
+    sequencer::Sequencer,
+    sweep::Sweep,
+    timer::Timer,
+};
 
 const WAVEFORMS: [[u8; 8]; 4] = [
     [0, 1, 0, 0, 0, 0, 0, 0],
@@ -15,13 +22,28 @@ pub struct Pulse {
     length_counter: LengthCounter,
     sweep: Sweep,
     timer: Timer,
+    sequencer: Sequencer,
     envelope: Envelope,
+}
+
+impl ClockHalfFrame for Pulse {
+    fn tick_half(&mut self) {
+        self.length_counter.tick();
+        self.sweep.update_period(&mut self.timer);
+    }
+}
+
+impl ClockQuarterFrame for Pulse {
+    fn tick_quarter(&mut self) {
+        self.envelope.tick();
+    }
 }
 
 impl Pulse {
     pub fn channel1() -> Self {
         Self {
             sweep: Sweep::new(1),
+            sequencer: Sequencer::new(8),
             ..Default::default()
         }
     }
@@ -29,6 +51,7 @@ impl Pulse {
     pub fn channel2() -> Self {
         Self {
             sweep: Sweep::new(0),
+            sequencer: Sequencer::new(8),
             ..Default::default()
         }
     }
@@ -49,11 +72,36 @@ impl Pulse {
         }
     }
 
+    pub fn sample(&self) -> u8 {
+        match self.is_mute() {
+            false => {
+                let duty = self.duty_cycle as usize;
+                let seq = self.sequencer.index();
+                WAVEFORMS[duty][seq] * self.envelope.volume()
+            }
+            true => 0,
+        }
+    }
+
     pub fn active(&self) -> bool {
         self.length_counter.active()
     }
 
     pub fn set_enabled(&mut self, value: bool) {
         self.length_counter.set_enabled(value);
+    }
+
+    pub fn tick_timer(&mut self) {
+        self.timer.tick();
+
+        if self.timer.is_zero() {
+            self.sequencer.step();
+        }
+    }
+
+    fn is_mute(&self) -> bool {
+        !self.length_counter.active()
+            || self.sweep.target_period(&self.timer) > 0x7FF
+            || self.timer.period < 8
     }
 }
