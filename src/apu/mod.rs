@@ -1,3 +1,5 @@
+// https://www.nesdev.org/wiki/APU
+
 mod channels;
 mod envelope;
 mod frame_counter;
@@ -91,6 +93,21 @@ impl Apu {
 
     pub fn poll_irq(&self) -> Option<Interrupt> {
         self.frame_counter.irq().then_some(Interrupt::Irq)
+    }
+
+    // https://www.nesdev.org/wiki/APU_Mixer
+    pub fn get_sample(&self) -> u16 {
+        let p1 = self.pulse1.get_sample() as f64;
+        let p2 = self.pulse1.get_sample() as f64;
+        let t = self.triangle.get_sample() as f64;
+        let n = self.noise.get_sample() as f64;
+        let d = 0.; // TODO: DMC
+
+        let pulse_out = 95.88 / ((8128. / (p1 + p2)) + 100.);
+        let tnd_out = 159.79 / ((1. / ((t + 8227.) + (n + 12241.) + (d + 22638.))) + 100.);
+        let output = (pulse_out + tnd_out) * 65535.0;
+
+        output as u16
     }
 }
 

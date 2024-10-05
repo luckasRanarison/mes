@@ -1,3 +1,5 @@
+// https://www.nesdev.org/wiki/APU_Length_Counter
+
 use crate::utils::Clock;
 
 const LENGTH_TABLE: [u8; 32] = [

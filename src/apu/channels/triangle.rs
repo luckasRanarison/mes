@@ -1,3 +1,5 @@
+// https://www.nesdev.org/wiki/APU_Triangle
+
 use crate::{
     apu::{
         frame_counter::{ClockFrame, Frame},

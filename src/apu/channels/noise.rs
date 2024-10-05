@@ -1,3 +1,5 @@
+// https://www.nesdev.org/wiki/APU_Noise
+
 use crate::{
     apu::{
         envelope::Envelope,
