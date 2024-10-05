@@ -1,9 +1,6 @@
 // https://www.nesdev.org/wiki/APU_Frame_Counter
 
-use crate::{
-    cpu::interrupt::Interrupt,
-    utils::{BitFlag, Clock},
-};
+use crate::utils::{BitFlag, Clock};
 
 #[derive(Debug)]
 enum Flag {
@@ -18,7 +15,7 @@ enum Flag {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum SequencerMode {
+enum Mode {
     FourSteps,
     FiveSteps,
 }
@@ -44,17 +41,17 @@ impl Clock for FrameCounter {
         match (self.sequencer, mode) {
             (14913, _) => self.frame = Some(Frame::Half),
             (7457, _) | (22371, _) => self.frame = Some(Frame::Quarter),
-            (29828, SequencerMode::FourSteps) => self.set_interrupt(),
-            (29829, SequencerMode::FourSteps) => {
+            (29828, Mode::FourSteps) => self.set_interrupt(),
+            (29829, Mode::FourSteps) => {
                 self.set_interrupt();
                 self.frame = Some(Frame::Half);
             }
-            (29830, SequencerMode::FourSteps) => {
+            (29830, Mode::FourSteps) => {
                 self.set_interrupt();
                 self.sequencer = 0;
             }
-            (37281, SequencerMode::FiveSteps) => self.frame = Some(Frame::Half),
-            (37282, SequencerMode::FiveSteps) => self.sequencer = 0,
+            (37281, Mode::FiveSteps) => self.frame = Some(Frame::Half),
+            (37282, Mode::FiveSteps) => self.sequencer = 0,
             _ => {}
         };
 
@@ -63,7 +60,7 @@ impl Clock for FrameCounter {
 }
 
 impl FrameCounter {
-    pub fn write_u8(&mut self, value: u8) {
+    pub fn write(&mut self, value: u8) {
         self.flags = value;
         self.interrupt = !value.contains(Flag::I as u8);
         self.sequencer = 0; // FIXME: apply 3-4 cycle delay
@@ -73,14 +70,18 @@ impl FrameCounter {
         self.frame.take()
     }
 
-    pub fn poll_irq(&mut self) -> Option<Interrupt> {
-        self.interrupt.then_some(Interrupt::Irq)
+    pub fn irq(&self) -> bool {
+        self.interrupt
     }
 
-    fn sequencer_mode(&self) -> SequencerMode {
+    pub fn clear_interrupt(&mut self) {
+        self.interrupt = false;
+    }
+
+    fn sequencer_mode(&self) -> Mode {
         match self.flags.contains(Flag::M as u8) {
-            true => SequencerMode::FiveSteps,
-            false => SequencerMode::FourSteps,
+            true => Mode::FiveSteps,
+            false => Mode::FourSteps,
         }
     }
 

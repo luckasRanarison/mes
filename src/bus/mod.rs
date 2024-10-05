@@ -2,6 +2,7 @@ mod dma;
 mod ppu;
 
 use crate::{
+    apu::Apu,
     controller::ControllerState,
     cpu::interrupt::Interrupt,
     mappers::{Mapper, MapperChip},
@@ -9,7 +10,7 @@ use crate::{
     utils::{Clock, Reset},
 };
 
-use std::fmt::Debug;
+use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
 pub use {dma::DmaState, ppu::PpuBus};
 
@@ -33,18 +34,22 @@ pub struct MainBus {
     mapper: MapperChip,
     dma_adr: Option<u8>,
     cycle: u64,
+    pub(crate) apu: Rc<RefCell<Apu>>,
     pub(crate) ppu: Ppu,
     pub(crate) controller: ControllerState,
 }
 
 impl MainBus {
     pub fn new(mapper: MapperChip) -> Self {
+        let apu = Apu::default();
+        let apu = Rc::new(apu.into());
         let ppu = Ppu::new(mapper.clone());
         let controller = ControllerState::default();
         let ram = [0; RAM_SIZE];
 
         MainBus {
             ram,
+            apu,
             ppu,
             mapper,
             dma_adr: None,
@@ -114,7 +119,7 @@ impl Bus for MainBus {
             0x2007 => self.ppu.read_data(),
             0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 => self.ppu.read_buffer(),
             0x2008..=0x3FFF => self.read_u8(address & 0x2007),
-            0x4015 => 0, // TODO: APU
+            0x4015 => self.apu.borrow_mut().read_status(),
             0x4016 | 0x4017 => self.read_controller(address & 1),
             0x4020..=0xFFFF => self.mapper.read(address),
             _ => panic!("Trying to read from write-only address: 0x{:x}", address),
@@ -133,7 +138,9 @@ impl Bus for MainBus {
             0x2007 => self.ppu.write_data(value),
             0x2000 | 0x2001 | 0x2005 | 0x2006 => {} // ignored before 29658 cycles
             0x2008..=0x3FFF => self.write_u8(address & 0x2007, value),
-            0x4000..=0x4013 | 0x4015 | 0x4017 => {} // TODO: APU
+            0x4000..=0x4013 => {} // TODO: APU
+            0x4015 => self.apu.borrow_mut().write_status(value),
+            0x4017 => self.apu.borrow_mut().write_frame_counter(value),
             0x4014 => self.setup_oam_dma(value),
             0x4016 => self.write_controller(value),
             0x4020..=0xFFFF => self.mapper.write(address, value),

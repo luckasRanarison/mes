@@ -10,6 +10,7 @@ use address::{Address, AddressMode};
 use opcodes::{Asm, OPCODES};
 
 use crate::{
+    apu::Apu,
     bus::{Bus, DmaState, MainBus},
     cpu::{
         interrupt::{Interrupt, INTERRUPT_LATENCY},
@@ -19,8 +20,10 @@ use crate::{
 };
 
 use std::{
+    cell::RefCell,
     fmt,
     ops::{BitAnd, BitOr, BitXor},
+    rc::Rc,
 };
 
 const STACK_START: u16 = 0x100;
@@ -36,6 +39,7 @@ pub struct Cpu {
     dma: Option<DmaState>,
     interrupt: Option<Interrupt>,
     pub(crate) bus: MainBus,
+    pub(crate) apu: Rc<RefCell<Apu>>,
 }
 
 impl Cpu {
@@ -47,6 +51,7 @@ impl Cpu {
             y: 0x00,
             sr: StatusRegister::default(),
             sp: 0x00,
+            apu: bus.apu.clone(),
             bus,
             cycle: 0,
             dma: None,
@@ -64,7 +69,10 @@ impl Cpu {
     }
 
     pub fn cycle(&mut self) -> u8 {
-        self.interrupt = self.interrupt.or(self.bus.poll_interrupt());
+        self.interrupt = self
+            .interrupt
+            .or_else(|| self.bus.poll_interrupt())
+            .or_else(|| self.apu.borrow().poll_irq());
 
         if let Some(interrupt) = self.interrupt.take() {
             if self.handle_interrupt(interrupt) {
@@ -91,6 +99,7 @@ impl Cpu {
         }
 
         let opcode = self.bus.read_u8(self.pc);
+
         self.increment_pc(1);
         self.execute(opcode)
     }
