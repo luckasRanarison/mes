@@ -7,7 +7,7 @@ mod sweep;
 mod timer;
 
 use channels::{Channel, Noise, Pulse};
-use frame_counter::{ClockHalfFrame, ClockQuarterFrame, Frame, FrameCounter};
+use frame_counter::{ClockFrame, FrameCounter};
 
 use crate::{
     cpu::interrupt::Interrupt,
@@ -45,18 +45,10 @@ impl Clock for Apu {
 
         self.frame_counter.tick();
 
-        match self.frame_counter.take_frame() {
-            Some(Frame::Quarter) => {
-                self.pulse1.tick_quarter();
-                self.pulse2.tick_quarter();
-                self.noise.tick_quarter();
-            }
-            Some(Frame::Half) => {
-                self.pulse1.tick_half();
-                self.pulse2.tick_half();
-                self.noise.tick_half();
-            }
-            None => {}
+        if let Some(frame) = self.frame_counter.take_frame() {
+            self.pulse1.tick_frame(&frame);
+            self.pulse2.tick_frame(&frame);
+            self.noise.tick_frame(&frame);
         }
     }
 }
@@ -66,6 +58,7 @@ impl Apu {
         Self {
             pulse1: Pulse::channel1(),
             pulse2: Pulse::channel2(),
+            noise: Noise::new(),
             ..Default::default()
         }
     }

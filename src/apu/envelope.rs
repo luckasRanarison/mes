@@ -12,6 +12,22 @@ pub struct Envelope {
     counter: u8,
 }
 
+impl Envelope {
+    pub fn write(&mut self, value: u8) {
+        self.loop_flag = value.contains(5);
+        self.const_flag = value.contains(4);
+        self.volume = value.get_range(0..4);
+        self.start = true;
+    }
+
+    pub fn volume(&self) -> u8 {
+        match self.const_flag {
+            true => self.volume,
+            false => self.decay_level,
+        }
+    }
+}
+
 impl Clock for Envelope {
     fn tick(&mut self) {
         if self.start {
@@ -27,22 +43,6 @@ impl Clock for Envelope {
             }
         } else {
             self.counter -= 1;
-        }
-    }
-}
-
-impl Envelope {
-    pub fn write(&mut self, value: u8) {
-        self.loop_flag = value.contains(5);
-        self.const_flag = value.contains(4);
-        self.volume = value.get_range(0..4);
-        self.start = true;
-    }
-
-    pub fn volume(&self) -> u8 {
-        match self.const_flag {
-            true => self.volume,
-            false => self.decay_level,
         }
     }
 }

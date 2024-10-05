@@ -13,12 +13,8 @@ enum Mode {
     FiveSteps,
 }
 
-pub trait ClockHalfFrame {
-    fn tick_half(&mut self);
-}
-
-pub trait ClockQuarterFrame {
-    fn tick_quarter(&mut self);
+pub trait ClockFrame {
+    fn tick_frame(&mut self, frame: &Frame);
 }
 
 #[derive(Debug)]
@@ -27,37 +23,18 @@ pub enum Frame {
     Half,
 }
 
+impl Frame {
+    pub fn is_half(&self) -> bool {
+        matches!(self, Frame::Half)
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct FrameCounter {
     flags: u8,
     sequencer: u32,
     frame: Option<Frame>,
     interrupt: bool,
-}
-
-impl Clock for FrameCounter {
-    fn tick(&mut self) {
-        let mode = self.sequencer_mode();
-
-        match (self.sequencer, mode) {
-            (14913, _) => self.frame = Some(Frame::Half),
-            (7457, _) | (22371, _) => self.frame = Some(Frame::Quarter),
-            (29828, Mode::FourSteps) => self.set_interrupt(),
-            (29829, Mode::FourSteps) => {
-                self.set_interrupt();
-                self.frame = Some(Frame::Half);
-            }
-            (29830, Mode::FourSteps) => {
-                self.set_interrupt();
-                self.sequencer = 0;
-            }
-            (37281, Mode::FiveSteps) => self.frame = Some(Frame::Half),
-            (37282, Mode::FiveSteps) => self.sequencer = 0,
-            _ => {}
-        };
-
-        self.sequencer += 1;
-    }
 }
 
 impl FrameCounter {
@@ -90,5 +67,30 @@ impl FrameCounter {
         if !self.flags.contains(status_flag::I) {
             self.interrupt = true;
         }
+    }
+}
+
+impl Clock for FrameCounter {
+    fn tick(&mut self) {
+        let mode = self.sequencer_mode();
+
+        match (self.sequencer, mode) {
+            (14913, _) => self.frame = Some(Frame::Half),
+            (7457, _) | (22371, _) => self.frame = Some(Frame::Quarter),
+            (29828, Mode::FourSteps) => self.set_interrupt(),
+            (29829, Mode::FourSteps) => {
+                self.set_interrupt();
+                self.frame = Some(Frame::Half);
+            }
+            (29830, Mode::FourSteps) => {
+                self.set_interrupt();
+                self.sequencer = 0;
+            }
+            (37281, Mode::FiveSteps) => self.frame = Some(Frame::Half),
+            (37282, Mode::FiveSteps) => self.sequencer = 0,
+            _ => {}
+        };
+
+        self.sequencer += 1;
     }
 }

@@ -31,7 +31,7 @@ impl Sweep {
 
     pub fn update_period(&mut self, timer: &mut Timer) {
         if self.counter == 0 && self.enabled && self.shift > 0 && timer.period >= 8 {
-            let period = self.target_period(&timer);
+            let period = self.target_period(timer);
 
             // set the period if not "muting"
             if period <= 0x7FF {

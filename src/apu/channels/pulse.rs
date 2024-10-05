@@ -1,7 +1,7 @@
 use crate::{
     apu::{
         envelope::Envelope,
-        frame_counter::{ClockHalfFrame, ClockQuarterFrame},
+        frame_counter::{ClockFrame, Frame},
         length_counter::LengthCounter,
         sequencer::Sequencer,
         sweep::Sweep,
@@ -45,22 +45,6 @@ impl Pulse {
             ..Default::default()
         }
     }
-
-    fn is_mute(&self) -> bool {
-        !self.length_counter.active()
-            || self.sweep.target_period(&self.timer) > 0x7FF
-            || self.timer.period < 8
-    }
-}
-
-impl Clock for Pulse {
-    fn tick(&mut self) {
-        self.timer.tick();
-
-        if self.timer.is_zero() {
-            self.sequencer.step();
-        }
-    }
 }
 
 impl Channel for Pulse {
@@ -81,14 +65,9 @@ impl Channel for Pulse {
     }
 
     fn sample(&self) -> u8 {
-        match self.is_mute() {
-            false => {
-                let duty = self.duty_cycle as usize;
-                let seq = self.sequencer.index();
-                WAVEFORMS[duty][seq] * self.envelope.volume()
-            }
-            true => 0,
-        }
+        let duty = self.duty_cycle as usize;
+        let seq = self.sequencer.index();
+        WAVEFORMS[duty][seq] * self.envelope.volume()
     }
 
     fn active(&self) -> bool {
@@ -98,17 +77,31 @@ impl Channel for Pulse {
     fn set_enabled(&mut self, value: bool) {
         self.length_counter.set_enabled(value);
     }
-}
 
-impl ClockHalfFrame for Pulse {
-    fn tick_half(&mut self) {
-        self.length_counter.tick();
-        self.sweep.update_period(&mut self.timer);
+    fn is_mute(&self) -> bool {
+        !self.length_counter.active()
+            || self.sweep.target_period(&self.timer) > 0x7FF
+            || self.timer.period < 8
     }
 }
 
-impl ClockQuarterFrame for Pulse {
-    fn tick_quarter(&mut self) {
+impl Clock for Pulse {
+    fn tick(&mut self) {
+        self.timer.tick();
+
+        if self.timer.is_zero() {
+            self.sequencer.step();
+        }
+    }
+}
+
+impl ClockFrame for Pulse {
+    fn tick_frame(&mut self, frame: &Frame) {
         self.envelope.tick();
+
+        if frame.is_half() {
+            self.length_counter.tick();
+            self.sweep.update_period(&mut self.timer);
+        }
     }
 }

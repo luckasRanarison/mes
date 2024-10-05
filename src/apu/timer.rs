@@ -6,16 +6,6 @@ pub struct Timer {
     pub counter: u16,
 }
 
-impl Clock for Timer {
-    fn tick(&mut self) {
-        if self.counter == 0 {
-            self.counter = self.period;
-        } else {
-            self.counter -= 1;
-        }
-    }
-}
-
 impl Timer {
     pub fn is_zero(&self) -> bool {
         self.counter == 0
@@ -27,5 +17,15 @@ impl Timer {
 
     pub fn set_period_lo(&mut self, value: u8) {
         self.period = (self.period & 0xFF00) | value as u16;
+    }
+}
+
+impl Clock for Timer {
+    fn tick(&mut self) {
+        if self.counter == 0 {
+            self.counter = self.period;
+        } else {
+            self.counter -= 1;
+        }
     }
 }

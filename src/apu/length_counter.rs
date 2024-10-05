@@ -12,14 +12,6 @@ pub struct LengthCounter {
     enabled: bool,
 }
 
-impl Clock for LengthCounter {
-    fn tick(&mut self) {
-        if !self.halted && self.counter > 0 {
-            self.counter -= 1;
-        }
-    }
-}
-
 impl LengthCounter {
     pub fn set_length(&mut self, index: u8) {
         if self.enabled {
@@ -37,5 +29,13 @@ impl LengthCounter {
 
     pub fn active(&self) -> bool {
         self.enabled && self.counter > 0
+    }
+}
+
+impl Clock for LengthCounter {
+    fn tick(&mut self) {
+        if !self.halted && self.counter > 0 {
+            self.counter -= 1;
+        }
     }
 }

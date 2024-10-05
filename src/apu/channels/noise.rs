@@ -1,7 +1,7 @@
 use crate::{
     apu::{
         envelope::Envelope,
-        frame_counter::{ClockHalfFrame, ClockQuarterFrame},
+        frame_counter::{ClockFrame, Frame},
         length_counter::LengthCounter,
         timer::Timer,
     },
@@ -11,7 +11,7 @@ use crate::{
 use super::Channel;
 
 const PERIODS: [u16; 16] = [
-    4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708, 944, 1890, 3778,
+    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 ];
 
 #[derive(Debug, Default)]
@@ -20,7 +20,16 @@ pub struct Noise {
     timer: Timer,
     length_counter: LengthCounter,
     mode: bool,
-    shift: u8,
+    shift: u16,
+}
+
+impl Noise {
+    pub fn new() -> Self {
+        Self {
+            shift: 1,
+            ..Default::default()
+        }
+    }
 }
 
 impl Channel for Noise {
@@ -41,7 +50,7 @@ impl Channel for Noise {
     }
 
     fn sample(&self) -> u8 {
-        todo!()
+        self.envolope.volume()
     }
 
     fn active(&self) -> bool {
@@ -51,6 +60,10 @@ impl Channel for Noise {
     fn set_enabled(&mut self, value: bool) {
         self.length_counter.set_enabled(value);
     }
+
+    fn is_mute(&self) -> bool {
+        !self.length_counter.active() || self.shift.contains(0)
+    }
 }
 
 impl Clock for Noise {
@@ -58,19 +71,22 @@ impl Clock for Noise {
         self.timer.tick();
 
         if self.timer.is_zero() {
-            // shifting
+            let rhs_bit = if self.mode { 6 } else { 1 };
+            let rhs = self.shift.get(rhs_bit);
+            let lhs = self.shift.get(0);
+            let feedback = lhs ^ rhs;
+            self.shift >>= 1;
+            self.shift |= feedback << 14;
         }
     }
 }
 
-impl ClockQuarterFrame for Noise {
-    fn tick_quarter(&mut self) {
+impl ClockFrame for Noise {
+    fn tick_frame(&mut self, frame: &Frame) {
         self.envolope.tick();
-    }
-}
 
-impl ClockHalfFrame for Noise {
-    fn tick_half(&mut self) {
-        self.length_counter.tick();
+        if frame.is_half() {
+            self.length_counter.tick();
+        }
     }
 }
