@@ -1,6 +1,9 @@
 // https://www.nesdev.org/wiki/APU_Frame_Counter
 
-use crate::utils::{BitFlag, Clock};
+use crate::{
+    cpu::interrupt::Interrupt,
+    utils::{BitFlag, Clock},
+};
 
 #[derive(Debug)]
 enum Flag {
@@ -26,12 +29,12 @@ pub enum Frame {
     Half,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FrameCounter {
     flags: u8,
-    sequencer: u16,
+    sequencer: u32,
     frame: Option<Frame>,
-    interrupt: Option<bool>,
+    interrupt: bool,
 }
 
 impl Clock for FrameCounter {
@@ -62,6 +65,7 @@ impl Clock for FrameCounter {
 impl FrameCounter {
     pub fn write_u8(&mut self, value: u8) {
         self.flags = value;
+        self.interrupt = !value.contains(Flag::I as u8);
         self.sequencer = 0; // FIXME: apply 3-4 cycle delay
     }
 
@@ -69,8 +73,8 @@ impl FrameCounter {
         self.frame.take()
     }
 
-    pub fn poll_interrupt(&mut self) -> Option<bool> {
-        self.interrupt.take()
+    pub fn poll_irq(&mut self) -> Option<Interrupt> {
+        self.interrupt.then_some(Interrupt::Irq)
     }
 
     fn sequencer_mode(&self) -> SequencerMode {
@@ -82,7 +86,7 @@ impl FrameCounter {
 
     fn set_interrupt(&mut self) {
         if !self.flags.contains(Flag::I as u8) {
-            self.interrupt = Some(true);
+            self.interrupt = true;
         }
     }
 }
