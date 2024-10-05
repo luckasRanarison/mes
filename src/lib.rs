@@ -62,6 +62,10 @@ impl Nes {
         }
     }
 
+    pub fn drain_audio_buffer(&mut self) -> Vec<f64> {
+        self.cpu.apu.borrow_mut().drain_buffer()
+    }
+
     pub fn get_frame_buffer(&self) -> &[u8] {
         self.cpu.bus.ppu.get_frame_buffer()
     }

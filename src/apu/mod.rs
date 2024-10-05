@@ -34,7 +34,8 @@ pub struct Apu {
     triangle: Triangle,
     noise: Noise,
     frame_counter: FrameCounter,
-    odd_cycle: bool,
+    cycle: u64,
+    buffer: Vec<f64>,
 }
 
 impl Apu {
@@ -95,8 +96,12 @@ impl Apu {
         self.frame_counter.irq().then_some(Interrupt::Irq)
     }
 
+    pub fn drain_buffer(&mut self) -> Vec<f64> {
+        self.buffer.drain(..).collect()
+    }
+
     // https://www.nesdev.org/wiki/APU_Mixer
-    pub fn get_sample(&self) -> u16 {
+    fn get_sample(&self) -> f64 {
         let p1 = self.pulse1.get_sample() as f64;
         let p2 = self.pulse1.get_sample() as f64;
         let t = self.triangle.get_sample() as f64;
@@ -105,9 +110,9 @@ impl Apu {
 
         let pulse_out = 95.88 / ((8128. / (p1 + p2)) + 100.);
         let tnd_out = 159.79 / ((1. / ((t + 8227.) + (n + 12241.) + (d + 22638.))) + 100.);
-        let output = (pulse_out + tnd_out) * 65535.0;
+        let output = (pulse_out + tnd_out) * 65535.0; // 0.0 to 1.0
 
-        output as u16
+        output * 2.0 - 1.0
     }
 }
 
@@ -115,13 +120,11 @@ impl Clock for Apu {
     fn tick(&mut self) {
         self.triangle.tick();
 
-        if self.odd_cycle {
+        if self.cycle % 2 == 1 {
             self.pulse1.tick();
             self.pulse2.tick();
             self.noise.tick();
         }
-
-        self.odd_cycle = !self.odd_cycle;
 
         self.frame_counter.tick();
 
@@ -131,5 +134,13 @@ impl Clock for Apu {
             self.triangle.tick_frame(&frame);
             self.noise.tick_frame(&frame);
         }
+
+        // 44_100 / 60 == 735 samples/frame
+        // 29970 (CPU cycle) / 735 == 40 cycles/frame
+        if self.cycle % 40 == 0 {
+            self.buffer.push(self.get_sample());
+        }
+
+        self.cycle += 1;
     }
 }

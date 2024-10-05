@@ -35,6 +35,11 @@ impl Nes {
         self.0.step_vblank();
     }
 
+    #[wasm_bindgen(js_name = "drainAudioBuffer")]
+    pub fn drain_audio_buffer(&mut self) -> Vec<f64> {
+        self.0.drain_audio_buffer()
+    }
+
     #[wasm_bindgen(js_name = "getFrameBufferPtr")]
     pub fn get_frame_buffer_ptr(&self) -> *const u8 {
         self.0.get_frame_buffer().as_ptr()
