@@ -41,8 +41,7 @@ pub struct MainBus {
 
 impl MainBus {
     pub fn new(mapper: MapperChip) -> Self {
-        let apu = Apu::default();
-        let apu = Rc::new(apu.into());
+        let apu = Rc::new(Apu::new().into());
         let ppu = Ppu::new(mapper.clone());
         let controller = ControllerState::default();
         let ram = [0; RAM_SIZE];
@@ -138,7 +137,9 @@ impl Bus for MainBus {
             0x2007 => self.ppu.write_data(value),
             0x2000 | 0x2001 | 0x2005 | 0x2006 => {} // ignored before 29658 cycles
             0x2008..=0x3FFF => self.write_u8(address & 0x2007, value),
-            0x4000..=0x4013 => {} // TODO: APU
+            0x4000..=0x4003 => self.apu.borrow_mut().write_pulse1(address, value),
+            0x4004..=0x4007 => self.apu.borrow_mut().write_pulse2(address, value),
+            0x4008..=0x4013 => {} // TODO: APU
             0x4015 => self.apu.borrow_mut().write_status(value),
             0x4017 => self.apu.borrow_mut().write_frame_counter(value),
             0x4014 => self.setup_oam_dma(value),

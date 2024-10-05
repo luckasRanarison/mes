@@ -1,7 +1,10 @@
 mod frame_counter;
+mod length_counter;
+mod pulse;
 mod sweep;
 
 use frame_counter::{Frame, FrameCounter};
+use pulse::Pulse;
 
 use crate::{
     cpu::interrupt::Interrupt,
@@ -21,6 +24,8 @@ mod status_flag {
 
 #[derive(Debug, Default)]
 pub struct Apu {
+    pulse1: Pulse,
+    pulse2: Pulse,
     frame_counter: FrameCounter,
 }
 
@@ -37,24 +42,39 @@ impl Clock for Apu {
 }
 
 impl Apu {
+    pub fn new() -> Self {
+        Self {
+            ..Default::default()
+        }
+    }
+
     pub fn read_status(&mut self) -> u8 {
         let mut status = 0;
 
-        status.update(status_flag::P1, todo!());
-        status.update(status_flag::P2, todo!());
-        status.update(status_flag::T, todo!());
-        status.update(status_flag::N, todo!());
-        status.update(status_flag::D, todo!());
+        status.update(status_flag::P1, self.pulse1.active());
+        status.update(status_flag::P2, self.pulse2.active());
+        //status.update(status_flag::T, todo!());
+        //status.update(status_flag::N, todo!());
+        //status.update(status_flag::D, todo!());
         status.update(status_flag::F, self.frame_counter.irq());
-        status.update(status_flag::I, todo!());
+        //status.update(status_flag::I, todo!());
 
         self.frame_counter.clear_interrupt();
 
         status
     }
 
+    pub fn write_pulse1(&mut self, address: u16, value: u8) {
+        self.pulse1.write(address, value);
+    }
+
+    pub fn write_pulse2(&mut self, address: u16, value: u8) {
+        self.pulse2.write(address, value);
+    }
+
     pub fn write_status(&mut self, value: u8) {
-        // TODO: enable/disable sound channels
+        self.pulse1.set_enabled(value.contains(status_flag::P1));
+        self.pulse2.set_enabled(value.contains(status_flag::P2));
     }
 
     pub fn write_frame_counter(&mut self, value: u8) {
