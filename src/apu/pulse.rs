@@ -1,6 +1,6 @@
 use crate::utils::BitFlag;
 
-use super::{length_counter::LengthCounter, sweep::Sweep, timer::Timer};
+use super::{envelope::Envelope, length_counter::LengthCounter, sweep::Sweep, timer::Timer};
 
 const WAVEFORMS: [[u8; 8]; 4] = [
     [0, 1, 0, 0, 0, 0, 0, 0],
@@ -15,6 +15,7 @@ pub struct Pulse {
     length_counter: LengthCounter,
     sweep: Sweep,
     timer: Timer,
+    envelope: Envelope,
 }
 
 impl Pulse {
@@ -37,6 +38,7 @@ impl Pulse {
             0 => {
                 self.duty_cycle = value.get_range(6..8);
                 self.length_counter.set_halt(value.contains(5));
+                self.envelope.write(value);
             }
             1 => self.sweep.write(value),
             2 => self.timer.set_period_lo(value),

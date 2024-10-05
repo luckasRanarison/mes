@@ -1,3 +1,4 @@
+mod envelope;
 mod frame_counter;
 mod length_counter;
 mod pulse;
