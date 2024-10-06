@@ -102,10 +102,10 @@ impl Apu {
 
     // https://www.nesdev.org/wiki/APU_Mixer
     fn get_sample(&self) -> f32 {
-        let p1 = self.pulse1.get_sample() as f32;
-        let p2 = self.pulse1.get_sample() as f32;
-        let t = self.triangle.get_sample() as f32;
-        let n = self.noise.get_sample() as f32;
+        let p1 = self.pulse1.get_sample();
+        let p2 = self.pulse1.get_sample();
+        let t = self.triangle.get_sample();
+        let n = self.noise.get_sample();
         let d = 0.; // TODO: DMC
 
         let pulse_out = 95.88 / ((8128.0 / (p1 + p2)) + 100.0);
