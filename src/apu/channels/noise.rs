@@ -46,7 +46,10 @@ impl Channel for Noise {
                 self.mode = value.contains(7);
                 self.timer.period = PERIODS[index];
             }
-            3 => self.length_counter.set_length(value >> 3),
+            3 => {
+                self.length_counter.set_length(value >> 3);
+                self.envolope.restart();
+            }
             _ => {} // unused
         }
     }

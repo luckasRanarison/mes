@@ -26,6 +26,10 @@ impl Envelope {
             false => self.decay_level,
         }
     }
+
+    pub fn restart(&mut self) {
+        self.start = true;
+    }
 }
 
 impl Clock for Envelope {

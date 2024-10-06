@@ -23,7 +23,7 @@ const WAVEFORMS: [[u8; 8]; 4] = [
 
 #[derive(Debug, Default)]
 pub struct Pulse {
-    duty_cycle: u8,
+    duty_mode: u8,
     length_counter: LengthCounter,
     sweep: Sweep,
     timer: Timer,
@@ -53,7 +53,7 @@ impl Channel for Pulse {
     fn write_register(&mut self, address: u16, value: u8) {
         match address % 4 {
             0 => {
-                self.duty_cycle = value.get_range(6..8);
+                self.duty_mode = value.get_range(6..8);
                 self.length_counter.set_halt(value.contains(5));
                 self.envelope.write(value);
             }
@@ -62,12 +62,14 @@ impl Channel for Pulse {
             _ => {
                 self.timer.set_period_hi(value.get_range(0..2));
                 self.length_counter.set_length(value.get_range(3..8));
+                self.sequencer.reset();
+                self.envelope.restart();
             }
         }
     }
 
     fn raw_sample(&self) -> u8 {
-        let duty = self.duty_cycle as usize;
+        let duty = self.duty_mode as usize;
         let seq = self.sequencer.index();
         WAVEFORMS[duty][seq] * self.envelope.volume()
     }

@@ -16,4 +16,8 @@ impl Sequencer {
     pub fn index(&self) -> usize {
         self.current
     }
+
+    pub fn reset(&mut self) {
+        self.current = 0;
+    }
 }
