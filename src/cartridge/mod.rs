@@ -35,11 +35,11 @@ impl Header {
             return Err(Error::UnsupportedFileFormat);
         }
 
-        let prg_rom_pages = *bytes.get(4).ok_or(Error::UnexpectedEndOfInput)?;
-        let chr_rom_pages = *bytes.get(5).ok_or(Error::UnexpectedEndOfInput)?;
-        let flags_6 = bytes.get(6).ok_or(Error::UnexpectedEndOfInput)?;
-        let flags_7 = bytes.get(7).ok_or(Error::UnexpectedEndOfInput)?;
-        let prg_ram_pages = *bytes.get(8).ok_or(Error::UnexpectedEndOfInput)?;
+        let prg_rom_pages = *bytes.get(4).ok_or(Error::eof("PRG ROM pages", 1))?;
+        let chr_rom_pages = *bytes.get(5).ok_or(Error::eof("CHR ROM pages", 1))?;
+        let flags_6 = bytes.get(6).ok_or(Error::eof("Flags 6", 1))?;
+        let flags_7 = bytes.get(7).ok_or(Error::eof("Flags 7", 1))?;
+        let prg_ram_pages = *bytes.get(8).ok_or(Error::eof("PRG RAM pages", 1))?;
 
         let battery = flags_6.contains(1);
         let trainer = flags_6.contains(2);
@@ -176,13 +176,13 @@ pub fn create_cartridge_mock() -> Cartridge {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::test::NESTEST_ROM;
+
     use super::Cartridge;
-    use std::fs;
 
     #[test]
     fn test_load_rom() {
-        let bytes = fs::read("nestest/nestest.nes").unwrap();
-        let rom = Cartridge::try_from_bytes(&bytes);
+        let rom = Cartridge::try_from_bytes(&NESTEST_ROM);
 
         assert!(rom.is_ok());
     }

@@ -794,52 +794,16 @@ mod tests {
         bus::{Bus, MainBus},
         cpu::Cpu,
         mappers::MapperChip,
+        utils::test::{LogLine, NESTEST_LOG, NESTEST_ROM},
     };
-    use std::fs;
-
-    #[derive(Debug)]
-    struct LogLine {
-        pc: u16,
-        opcode: u8,
-        a: u8,
-        x: u8,
-        y: u8,
-        sr: u8,
-        sp: u8,
-        cycle: u64,
-    }
-
-    fn parse_log_line(line: &str) -> LogLine {
-        let pc = u16::from_str_radix(&line[..4], 16).unwrap();
-        let opcode = u8::from_str_radix(&line[6..8], 16).unwrap();
-        let a = u8::from_str_radix(&line[50..52], 16).unwrap();
-        let x = u8::from_str_radix(&line[55..57], 16).unwrap();
-        let y = u8::from_str_radix(&line[60..62], 16).unwrap();
-        let sr = u8::from_str_radix(&line[65..67], 16).unwrap();
-        let sp = u8::from_str_radix(&line[71..73], 16).unwrap();
-        let cycle = line[90..].parse().unwrap();
-
-        LogLine {
-            pc,
-            opcode,
-            a,
-            x,
-            y,
-            sr,
-            sp,
-            cycle,
-        }
-    }
 
     #[test]
     fn test_cpu_nestest() {
-        let log = fs::read_to_string("nestest/nestest.log").unwrap();
-        let rom = fs::read("nestest/nestest.nes").unwrap();
-        let mapper = MapperChip::try_from_bytes(&rom).unwrap();
+        let mapper = MapperChip::try_from_bytes(NESTEST_ROM).unwrap();
         let bus = MainBus::new(mapper);
         let mut cpu = Cpu::new(bus);
 
-        cpu.step();
+        cpu.step(); // reset interrupt
 
         assert_eq!(cpu.pc, 0xC004);
         assert_eq!(cpu.sp, 0xFD);
@@ -847,18 +811,20 @@ mod tests {
         cpu.pc = 0xC000;
         cpu.sr.assign(0x24);
 
-        for line in log.lines() {
-            let parsed = parse_log_line(line);
+        for line in NESTEST_LOG.lines() {
+            let parsed = LogLine::from_line(line).unwrap();
             let opcode = cpu.bus.read_u8(cpu.pc);
 
-            assert_eq!(parsed.opcode, opcode);
-            assert_eq!(parsed.pc, cpu.pc);
-            assert_eq!(parsed.a, cpu.ac);
-            assert_eq!(parsed.x, cpu.x);
-            assert_eq!(parsed.y, cpu.y);
-            assert_eq!(parsed.sp, cpu.sp);
-            assert_eq!(parsed.sr, cpu.sr.value());
-            assert_eq!(parsed.cycle, cpu.cycle);
+            println!("\nLine: {parsed:?}\nCPU: {cpu:?}");
+
+            assert_eq!(parsed.opcode, opcode, "opcode");
+            assert_eq!(parsed.pc, cpu.pc, "pc");
+            assert_eq!(parsed.a, cpu.ac, "acc");
+            assert_eq!(parsed.x, cpu.x, "x");
+            assert_eq!(parsed.y, cpu.y, "y");
+            assert_eq!(parsed.sp, cpu.sp, "sp");
+            assert_eq!(parsed.sr, cpu.sr.value(), "sr");
+            assert_eq!(parsed.cycle, cpu.cycle, "cycle");
 
             cpu.step();
         }

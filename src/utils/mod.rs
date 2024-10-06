@@ -1,5 +1,8 @@
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Shl, Shr};
 
+#[cfg(test)]
+pub mod test;
+
 pub trait BitFlag<T> {
     fn get(&self, flag: T) -> T;
     fn contains(&self, flag: T) -> bool;
@@ -70,7 +73,7 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::BitFlag;
 
     #[test]
