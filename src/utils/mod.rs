@@ -1,5 +1,8 @@
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Range, Shl, Shr, Sub};
 
+#[cfg(test)]
+pub mod test;
+
 pub trait BitFlag<T> {
     fn get(&self, flag: T) -> T;
     fn get_range(&self, range: Range<T>) -> T;
@@ -79,7 +82,7 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::BitFlag;
 
     #[test]
