@@ -108,11 +108,11 @@ impl Apu {
         let n = self.noise.get_sample() as f32;
         let d = 0.; // TODO: DMC
 
-        let pulse_out = 95.88 / ((8128. / (p1 + p2)) + 100.);
-        let tnd_out = 159.79 / ((1. / ((t + 8227.) + (n + 12241.) + (d + 22638.))) + 100.);
+        let pulse_out = 95.88 / ((8128.0 / (p1 + p2)) + 100.0);
+        let tnd_out = 159.79 / ((1.0 / ((t / 8227.0) + (n / 12241.0) + (d / 22638.0))) + 100.0);
         let output = pulse_out + tnd_out; // 0.0 to 1.0
 
-        output * 2.0 - 1.0
+        output * 2.0 - 1.0 // -1 to 1
     }
 }
 
