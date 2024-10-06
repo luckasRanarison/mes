@@ -22,9 +22,9 @@ mod status_flag {
     pub const P2: u8 = 1;
     pub const T : u8 = 2;
     pub const N : u8 = 3;
-    pub const D : u8 = 4;
+    //pub const D : u8 = 4;
     pub const F : u8 = 6;
-    pub const I : u8 = 7;
+    //pub const I : u8 = 7;
 }
 
 #[derive(Debug, Default)]
@@ -50,15 +50,11 @@ impl Apu {
     }
 
     pub fn read_status(&mut self) -> u8 {
-        let mut status = 0;
-
-        status.update(status_flag::P1, self.pulse1.is_active());
-        status.update(status_flag::P2, self.pulse2.is_active());
-        status.update(status_flag::T, self.triangle.is_active());
-        status.update(status_flag::N, self.noise.is_active());
-        //status.update(status_flag::D, todo!());
-        status.update(status_flag::F, self.frame_counter.irq());
-        //status.update(status_flag::I, todo!());
+        let status = (self.pulse1.is_active() as u8) << status_flag::P1
+            | (self.pulse2.is_active() as u8) << status_flag::P2
+            | (self.triangle.is_active() as u8) << status_flag::T
+            | (self.noise.is_active() as u8) << status_flag::N
+            | (self.frame_counter.irq() as u8) << status_flag::F;
 
         self.frame_counter.clear_interrupt();
 

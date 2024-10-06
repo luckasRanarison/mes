@@ -60,7 +60,7 @@ impl Channel for Pulse {
             1 => self.sweep.write(value),
             2 => self.timer.set_period_lo(value),
             _ => {
-                self.timer.set_period_hi(value.get_range(0..2));
+                self.timer.set_period_hi(value.get_range(0..3));
                 self.length_counter.set_length(value.get_range(3..8));
                 self.sequencer.reset();
                 self.envelope.restart();
