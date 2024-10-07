@@ -1,12 +1,7 @@
 // https://www.nesdev.org/wiki/APU
 
 mod channels;
-mod envelope;
 mod frame_counter;
-mod length_counter;
-mod sequencer;
-mod sweep;
-mod timer;
 
 use channels::{Channel, Noise, Pulse, Triangle};
 use frame_counter::{ClockFrame, FrameCounter};

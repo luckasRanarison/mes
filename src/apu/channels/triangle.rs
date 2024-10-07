@@ -1,16 +1,11 @@
 // https://www.nesdev.org/wiki/APU_Triangle
 
 use crate::{
-    apu::{
-        frame_counter::{ClockFrame, Frame},
-        length_counter::LengthCounter,
-        sequencer::Sequencer,
-        timer::Timer,
-    },
+    apu::frame_counter::{ClockFrame, Frame},
     utils::{BitFlag, Clock},
 };
 
-use super::Channel;
+use super::common::{Channel, LengthCounter, Sequencer, Timer};
 
 #[rustfmt::skip]
 const WAVEFORMS: [u8; 32] = [

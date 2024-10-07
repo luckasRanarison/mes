@@ -1,18 +1,11 @@
 // https://www.nesdev.org/wiki/APU_Pulse
 
 use crate::{
-    apu::{
-        envelope::Envelope,
-        frame_counter::{ClockFrame, Frame},
-        length_counter::LengthCounter,
-        sequencer::Sequencer,
-        sweep::Sweep,
-        timer::Timer,
-    },
+    apu::frame_counter::{ClockFrame, Frame},
     utils::{BitFlag, Clock},
 };
 
-use super::Channel;
+use super::common::{Channel, Envelope, LengthCounter, Sequencer, Sweep, Timer};
 
 const WAVEFORMS: [[u8; 8]; 4] = [
     [0, 1, 0, 0, 0, 0, 0, 0],

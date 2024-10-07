@@ -1,16 +1,11 @@
 // https://www.nesdev.org/wiki/APU_Noise
 
 use crate::{
-    apu::{
-        envelope::Envelope,
-        frame_counter::{ClockFrame, Frame},
-        length_counter::LengthCounter,
-        timer::Timer,
-    },
+    apu::frame_counter::{ClockFrame, Frame},
     utils::{BitFlag, Clock},
 };
 
-use super::Channel;
+use super::common::{Channel, Envelope, LengthCounter, Timer};
 
 const PERIODS: [u16; 16] = [
     4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
