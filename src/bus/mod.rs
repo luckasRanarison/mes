@@ -141,7 +141,7 @@ impl Bus for MainBus {
             0x4004..=0x4007 => self.apu.borrow_mut().write_pulse2(address, value),
             0x4008..=0x400B => self.apu.borrow_mut().write_triangle(address, value),
             0x400C..=0x400F => self.apu.borrow_mut().write_noise(address, value),
-            0x4010..=0x4013 => {} // TODO: DMC
+            0x4010..=0x4013 => self.apu.borrow_mut().write_dmc(address, value),
             0x4015 => self.apu.borrow_mut().write_status(value),
             0x4017 => self.apu.borrow_mut().write_frame_counter(value),
             0x4014 => self.setup_oam_dma(value),

@@ -3,7 +3,7 @@
 mod channels;
 mod frame_counter;
 
-use channels::{Channel, Noise, Pulse, Triangle};
+use channels::{Channel, Dmc, Noise, Pulse, Triangle};
 use frame_counter::{ClockFrame, FrameCounter};
 
 use crate::{
@@ -17,9 +17,9 @@ mod status_flag {
     pub const P2: u8 = 1;
     pub const T : u8 = 2;
     pub const N : u8 = 3;
-    //pub const D : u8 = 4;
+    pub const D : u8 = 4;
     pub const F : u8 = 6;
-    //pub const I : u8 = 7;
+    pub const I : u8 = 7;
 }
 
 #[derive(Debug, Default)]
@@ -28,6 +28,7 @@ pub struct Apu {
     pulse2: Pulse,
     triangle: Triangle,
     noise: Noise,
+    dmc: Dmc,
     frame_counter: FrameCounter,
     cycle: u64,
     buffer: Vec<f32>,
@@ -49,7 +50,9 @@ impl Apu {
             | (self.pulse2.is_active() as u8) << status_flag::P2
             | (self.triangle.is_active() as u8) << status_flag::T
             | (self.noise.is_active() as u8) << status_flag::N
-            | (self.frame_counter.irq() as u8) << status_flag::F;
+            | (self.dmc.is_active() as u8) << status_flag::D
+            | (self.frame_counter.irq() as u8) << status_flag::F
+            | (self.dmc.irq() as u8) << status_flag::I;
 
         self.frame_counter.clear_interrupt();
 
@@ -72,11 +75,16 @@ impl Apu {
         self.noise.write_register(address, value);
     }
 
+    pub fn write_dmc(&mut self, address: u16, value: u8) {
+        self.dmc.write_register(address, value);
+    }
+
     pub fn write_status(&mut self, value: u8) {
         self.pulse1.set_enabled(value.contains(status_flag::P1));
         self.pulse2.set_enabled(value.contains(status_flag::P2));
         self.triangle.set_enabled(value.contains(status_flag::T));
         self.noise.set_enabled(value.contains(status_flag::N));
+        self.dmc.set_enabled(value.contains(status_flag::D));
     }
 
     pub fn write_frame_counter(&mut self, value: u8) {
@@ -126,6 +134,7 @@ impl Clock for Apu {
             self.noise.tick_frame(&frame);
         }
 
+        // FIXME: find a better sampling strategy
         // 44_100 / 60 == 735 samples/frame
         // 29970 (CPU cycle) / 735 == 40 cycles/frame
         if self.cycle % 40 == 0 {
