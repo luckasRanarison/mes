@@ -61,11 +61,16 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let cycles = self.cycle();
+        let mut apu = self.apu.borrow_mut();
 
         for _ in 0..cycles {
             self.cycle += 1;
-            self.apu.borrow_mut().tick();
             self.bus.tick();
+            apu.tick();
+        }
+
+        if let Some(cycles) = apu.take_dmc_cycles() {
+            self.cycle += cycles as u64;
         }
     }
 

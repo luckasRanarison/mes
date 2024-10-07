@@ -41,7 +41,8 @@ pub struct MainBus {
 
 impl MainBus {
     pub fn new(mapper: MapperChip) -> Self {
-        let apu = Rc::new(Apu::new().into());
+        let apu = Apu::new(mapper.clone());
+        let apu = Rc::new(apu.into());
         let ppu = Ppu::new(mapper.clone());
         let controller = ControllerState::default();
         let ram = [0; RAM_SIZE];

@@ -8,6 +8,7 @@ use frame_counter::{ClockFrame, FrameCounter};
 
 use crate::{
     cpu::interrupt::Interrupt,
+    mappers::MapperChip,
     utils::{BitFlag, Clock},
 };
 
@@ -22,7 +23,7 @@ mod status_flag {
     pub const I : u8 = 7;
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Apu {
     pulse1: Pulse,
     pulse2: Pulse,
@@ -31,17 +32,20 @@ pub struct Apu {
     dmc: Dmc,
     frame_counter: FrameCounter,
     cycle: u64,
-    buffer: Vec<f32>,
+    buffer: Vec<f32>, // FIXME: use fixed size buffer
 }
 
 impl Apu {
-    pub fn new() -> Self {
+    pub fn new(mapper: MapperChip) -> Self {
         Self {
             pulse1: Pulse::channel1(),
             pulse2: Pulse::channel2(),
             triangle: Triangle::new(),
             noise: Noise::new(),
-            ..Default::default()
+            dmc: Dmc::new(mapper),
+            frame_counter: FrameCounter::default(),
+            cycle: 0,
+            buffer: Vec::new(),
         }
     }
 
@@ -54,7 +58,7 @@ impl Apu {
             | (self.frame_counter.irq() as u8) << status_flag::F
             | (self.dmc.irq() as u8) << status_flag::I;
 
-        self.frame_counter.clear_interrupt();
+        self.frame_counter.clear_irq();
 
         status
     }
@@ -85,6 +89,8 @@ impl Apu {
         self.triangle.set_enabled(value.contains(status_flag::T));
         self.noise.set_enabled(value.contains(status_flag::N));
         self.dmc.set_enabled(value.contains(status_flag::D));
+
+        self.dmc.clear_irq();
     }
 
     pub fn write_frame_counter(&mut self, value: u8) {
@@ -92,11 +98,18 @@ impl Apu {
     }
 
     pub fn poll_irq(&self) -> Option<Interrupt> {
-        self.frame_counter.irq().then_some(Interrupt::Irq)
+        match self.frame_counter.irq() || self.dmc.irq() {
+            true => Some(Interrupt::Irq),
+            false => None,
+        }
     }
 
     pub fn drain_buffer(&mut self) -> Vec<f32> {
         self.buffer.drain(..).collect()
+    }
+
+    pub fn take_dmc_cycles(&mut self) -> Option<u8> {
+        self.dmc.take_dma_cycles()
     }
 
     // https://www.nesdev.org/wiki/APU_Mixer
@@ -105,7 +118,7 @@ impl Apu {
         let p2 = self.pulse1.get_sample();
         let t = self.triangle.get_sample();
         let n = self.noise.get_sample();
-        let d = 0.; // TODO: DMC
+        let d = self.dmc.get_sample();
 
         let pulse_out = 95.88 / ((8128.0 / (p1 + p2)) + 100.0);
         let tnd_out = 159.79 / ((1.0 / ((t / 8227.0) + (n / 12241.0) + (d / 22638.0))) + 100.0);
@@ -123,6 +136,7 @@ impl Clock for Apu {
             self.pulse1.tick();
             self.pulse2.tick();
             self.noise.tick();
+            self.dmc.tick();
         }
 
         self.frame_counter.tick();

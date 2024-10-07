@@ -52,7 +52,7 @@ impl FrameCounter {
         self.interrupt
     }
 
-    pub fn clear_interrupt(&mut self) {
+    pub fn clear_irq(&mut self) {
         self.interrupt = false;
     }
 
