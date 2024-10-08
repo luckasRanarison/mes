@@ -113,7 +113,7 @@ impl Apu {
     }
 
     pub fn incoming_dma(&self) -> bool {
-        self.dmc.should_fetch()
+        self.cycle % 2 == 1 && self.dmc.should_fetch()
     }
 
     // https://www.nesdev.org/wiki/APU_Mixer
