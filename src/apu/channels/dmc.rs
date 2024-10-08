@@ -14,7 +14,6 @@ struct DmaReader {
     mapper: MapperChip,
     sample_address: u16,
     sample_length: u16,
-    sample_buffer: Option<u8>,
     remaining_bytes: u16,
     current_address: u16,
     dma_cycles: Option<u8>,
@@ -26,7 +25,6 @@ impl DmaReader {
             mapper,
             sample_address: 0,
             sample_length: 0,
-            sample_buffer: None,
             remaining_bytes: 0,
             current_address: 0,
             dma_cycles: None,
@@ -38,14 +36,9 @@ impl DmaReader {
         self.remaining_bytes = self.sample_length;
     }
 
-    fn should_fetch(&self) -> bool {
-        self.remaining_bytes > 0 && self.sample_buffer.is_none()
-    }
-
     fn fetch_byte(&mut self) -> u8 {
         let byte = self.mapper.read(self.current_address);
 
-        self.sample_buffer = Some(byte);
         self.remaining_bytes -= 1;
         *self.dma_cycles.get_or_insert(0) += 4;
 
@@ -147,6 +140,10 @@ impl Dmc {
         self.reader.dma_cycles.take()
     }
 
+    fn should_fetch(&self) -> bool {
+        self.reader.remaining_bytes == 0 && self.output.buffer.is_none()
+    }
+
     fn fetch_sample(&mut self) {
         self.output.buffer = self.reader.fetch_byte().into();
 
@@ -209,7 +206,7 @@ impl Clock for Dmc {
             self.output.tick();
         }
 
-        if self.reader.should_fetch() {
+        if self.should_fetch() {
             self.fetch_sample();
         }
     }
