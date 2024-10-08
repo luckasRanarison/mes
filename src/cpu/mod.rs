@@ -86,11 +86,11 @@ impl Cpu {
             }
         }
 
-        if self.bus.incoming_dma() && self.apu.borrow().incoming_dma() {
-            return 1; // DMC is taken causing an alignment cycle
+        if self.dma.is_some() && self.apu.borrow().incoming_dma() {
+            return 1; // DMC DMA is taken causing an extra alignment cycle
         }
 
-        if let Some(address) = self.bus.take_dma() {
+        if let Some(address) = self.bus.poll_dma() {
             self.dma = Some(DmaState::new(address));
 
             if self.cycle % 2 == 1 {
