@@ -87,7 +87,7 @@ impl Cpu {
         }
 
         if self.bus.incoming_dma() && self.apu.borrow().incoming_dma() {
-            return 1; // DMC is taken causibg an alignment cycle
+            return 1; // DMC is taken causing an alignment cycle
         }
 
         if let Some(address) = self.bus.take_dma() {
