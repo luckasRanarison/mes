@@ -7,10 +7,6 @@ use crate::{
 
 use super::common::{Channel, Envelope, LengthCounter, Timer};
 
-const PERIODS: [u16; 16] = [
-    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
-];
-
 #[derive(Debug, Default)]
 pub struct Noise {
     envolope: Envelope,
@@ -21,6 +17,12 @@ pub struct Noise {
 }
 
 impl Noise {
+    #[rustfmt::skip]
+    const PERIODS: [u16; 16] = [
+        0x004, 0x008, 0x010, 0x020, 0x040, 0x060, 0x080, 0x0A0,
+        0x0CA, 0x0FE, 0x17C, 0x1FC, 0x2FA, 0x3F8, 0x7F2, 0xFE4,
+    ];
+
     pub fn new() -> Self {
         Self {
             shift: 1,
@@ -39,7 +41,7 @@ impl Channel for Noise {
             2 => {
                 let index = value.get_range(0..4) as usize;
                 self.mode = value.contains(7);
-                self.timer.period = PERIODS[index];
+                self.timer.period = Self::PERIODS[index];
             }
             3 => {
                 self.length_counter.set_length(value >> 3);

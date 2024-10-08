@@ -112,8 +112,8 @@ pub struct Dmc {
 impl Dmc {
     #[rustfmt::skip]
     const RATES: [u16; 16] = [
-        428, 380, 340, 320, 286, 254, 226, 214,
-        190, 160, 142, 128, 106, 84, 72, 54,
+        0x1AC, 0x17C, 0x154, 0x140, 0x11E, 0x0FE, 0x0E2, 0x0D6,
+        0x0BE, 0x0A0, 0x08E, 0x080, 0x06A, 0x054, 0x048, 0x036,
     ];
 
     pub fn new(mapper: MapperChip) -> Self {

@@ -7,13 +7,6 @@ use crate::{
 
 use super::common::{Channel, Envelope, LengthCounter, Sequencer, Sweep, Timer};
 
-const WAVEFORMS: [[u8; 8]; 4] = [
-    [0, 1, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 0, 0],
-    [1, 0, 0, 1, 1, 1, 1, 1],
-];
-
 #[derive(Debug, Default)]
 pub struct Pulse {
     duty_mode: u8,
@@ -25,6 +18,13 @@ pub struct Pulse {
 }
 
 impl Pulse {
+    const WAVEFORMS: [[u8; 8]; 4] = [
+        [0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0],
+        [0, 1, 1, 1, 1, 0, 0, 0],
+        [1, 0, 0, 1, 1, 1, 1, 1],
+    ];
+
     pub fn channel1() -> Self {
         Self {
             sweep: Sweep::new(1),
@@ -64,7 +64,7 @@ impl Channel for Pulse {
     fn raw_sample(&self) -> u8 {
         let duty = self.duty_mode as usize;
         let seq = self.sequencer.index();
-        WAVEFORMS[duty][seq] * self.envelope.volume()
+        Self::WAVEFORMS[duty][seq] * self.envelope.volume()
     }
 
     fn is_active(&self) -> bool {
