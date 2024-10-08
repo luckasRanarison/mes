@@ -150,7 +150,7 @@ impl Dmc {
         if self.reader.remaining_bytes == 0 {
             if self.loop_flag {
                 self.reader.restart();
-            } else {
+            } else if self.irq_flag {
                 self.irq_status = true;
             }
         }
