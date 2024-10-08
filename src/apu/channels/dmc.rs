@@ -40,7 +40,7 @@ impl Reader {
         let byte = self.mapper.read(self.current_address);
 
         self.remaining_bytes -= 1;
-        *self.dma_cycles.get_or_insert(0) += 4;
+        self.dma_cycles = Some(4); // TODO: variable cycle length
 
         if self.current_address == 0xFFFF {
             self.current_address = 0x8000;
@@ -141,7 +141,7 @@ impl Dmc {
         self.reader.dma_cycles.take()
     }
 
-    fn should_fetch(&self) -> bool {
+    pub fn should_fetch(&self) -> bool {
         self.reader.remaining_bytes > 0 && self.output.buffer.is_none()
     }
 

@@ -112,6 +112,10 @@ impl Apu {
         self.dmc.take_dma_cycles()
     }
 
+    pub fn incoming_dma(&self) -> bool {
+        self.dmc.should_fetch()
+    }
+
     // https://www.nesdev.org/wiki/APU_Mixer
     fn get_sample(&self) -> f32 {
         let p1 = self.pulse1.get_sample();

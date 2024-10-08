@@ -62,7 +62,11 @@ impl MainBus {
         self.ppu.poll_nmi().then_some(Interrupt::Nmi)
     }
 
-    pub fn poll_dma(&mut self) -> Option<u8> {
+    pub fn incoming_dma(&mut self) -> bool {
+        self.dma_adr.is_some()
+    }
+
+    pub fn take_dma(&mut self) -> Option<u8> {
         self.dma_adr.take()
     }
 
