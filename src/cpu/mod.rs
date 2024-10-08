@@ -67,10 +67,10 @@ impl Cpu {
             self.cycle += 1;
             self.bus.tick();
             apu.tick();
-        }
 
-        if let Some(cycles) = apu.take_dmc_cycles() {
-            self.cycle += cycles as u64;
+            if let Some(cycles) = apu.take_dmc_cycles() {
+                self.cycle += cycles as u64;
+            }
         }
     }
 

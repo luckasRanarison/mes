@@ -10,7 +10,7 @@ use crate::{
 use super::common::{Channel, Timer};
 
 #[derive(Debug)]
-struct DmaReader {
+struct Reader {
     mapper: MapperChip,
     sample_address: u16,
     sample_length: u16,
@@ -19,7 +19,7 @@ struct DmaReader {
     dma_cycles: Option<u8>,
 }
 
-impl DmaReader {
+impl Reader {
     fn new(mapper: MapperChip) -> Self {
         Self {
             mapper,
@@ -79,6 +79,10 @@ impl OutputUnit {
             false if self.level > 2 => self.level -= 2,
             _ => {}
         }
+
+        if self.shift_counter > 0 {
+            self.shift_counter -= 1;
+        }
     }
 }
 
@@ -86,10 +90,6 @@ impl Clock for OutputUnit {
     fn tick(&mut self) {
         if !self.silence_flag {
             self.shift();
-        }
-
-        if self.shift_counter > 0 {
-            self.shift_counter -= 1;
         }
 
         if self.shift_counter == 0 {
@@ -104,7 +104,7 @@ pub struct Dmc {
     irq_flag: bool,
     irq_status: bool,
     loop_flag: bool,
-    reader: DmaReader,
+    reader: Reader,
     output: OutputUnit,
     timer: Timer,
 }
@@ -122,7 +122,7 @@ impl Dmc {
             irq_flag: false,
             irq_status: false,
             loop_flag: false,
-            reader: DmaReader::new(mapper),
+            reader: Reader::new(mapper),
             output: OutputUnit::default(),
             timer: Timer::default(),
         }
@@ -134,6 +134,7 @@ impl Dmc {
 
     pub fn clear_irq(&mut self) {
         self.irq_status = false;
+        self.irq_flag = false;
     }
 
     pub fn take_dma_cycles(&mut self) -> Option<u8> {
@@ -141,7 +142,7 @@ impl Dmc {
     }
 
     fn should_fetch(&self) -> bool {
-        self.reader.remaining_bytes == 0 && self.output.buffer.is_none()
+        self.reader.remaining_bytes > 0 && self.output.buffer.is_none()
     }
 
     fn fetch_sample(&mut self) {
@@ -166,7 +167,7 @@ impl Channel for Dmc {
                 self.timer.period = Self::RATES[value.get_range(0..4) as usize] / 2;
             }
             1 => self.output.level = value.get_range(0..7),
-            2 => self.reader.sample_address = 0xC00 + (64 * value as u16),
+            2 => self.reader.sample_address = 0xC000 + (64 * value as u16),
             _ => self.reader.sample_length = (16 * value as u16) + 1,
         }
     }
