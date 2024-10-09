@@ -76,7 +76,7 @@ impl OutputUnit {
     fn shift(&mut self) {
         match self.shift_register.get(0) {
             1 if self.level < 126 => self.level += 2,
-            0 if self.level > 2 => self.level -= 2,
+            0 if self.level > 1 => self.level -= 2,
             _ => {}
         }
 
