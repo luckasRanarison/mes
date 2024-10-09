@@ -119,7 +119,7 @@ impl Apu {
     // https://www.nesdev.org/wiki/APU_Mixer
     fn get_sample(&self) -> f32 {
         let p1 = self.pulse1.get_sample();
-        let p2 = self.pulse1.get_sample();
+        let p2 = self.pulse2.get_sample();
         let t = self.triangle.get_sample();
         let n = self.noise.get_sample();
         let d = self.dmc.get_sample();
