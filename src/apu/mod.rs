@@ -23,6 +23,8 @@ mod status_flag {
     pub const I : u8 = 7;
 }
 
+const SAMPLE_LENGTH: usize = 1470;
+
 #[derive(Debug)]
 pub struct Apu {
     pulse1: Pulse,
@@ -45,7 +47,7 @@ impl Apu {
             dmc: Dmc::new(mapper),
             frame_counter: FrameCounter::default(),
             cycle: 0,
-            buffer: Vec::new(),
+            buffer: Vec::with_capacity(SAMPLE_LENGTH),
         }
     }
 
@@ -105,6 +107,10 @@ impl Apu {
     }
 
     pub fn drain_buffer(&mut self) -> Vec<f32> {
+        while self.buffer.len() < SAMPLE_LENGTH {
+            self.buffer.push(0.0);
+        }
+
         self.buffer.drain(..).collect()
     }
 
@@ -153,9 +159,9 @@ impl Clock for Apu {
         }
 
         // FIXME: find a better sampling strategy
-        // 44_100 / 60 == 735 samples/frame
-        // 29970 (CPU cycle) / 735 == 40 cycles/frame
-        if self.cycle % 40 == 0 {
+        // 44_100 / 60 == 735.x samples/frame
+        // 29970 (CPU cycle) / 735 == 40.x cycles/frame
+        if self.cycle % 41 == 0 && self.buffer.len() < SAMPLE_LENGTH {
             self.buffer.push(self.get_sample());
         }
 

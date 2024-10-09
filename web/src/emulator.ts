@@ -10,7 +10,8 @@ class Emulator {
   private controllers: Controller[];
   private frameDuration = 1000 / 60;
   private lastTimestamp = 0;
-  private audio: AudioContext;
+  private audioCtx: AudioContext;
+  private audioWorklet?: AudioWorkletNode;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new Nes();
@@ -18,12 +19,25 @@ class Emulator {
     this.controllers = [new Controller(defaultP1)];
     this.active = false;
     this.canvas = canvas.getContext("2d")!;
-    this.audio = new AudioContext();
+    this.audioCtx = new AudioContext();
+    this.initAudioWorklet();
+  }
+
+  async initAudioWorklet() {
+    await this.audioCtx.audioWorklet.addModule("audio-processor.js");
+
+    this.audioWorklet = new AudioWorkletNode(
+      this.audioCtx,
+      "nes-audio-processor"
+    );
+
+    this.audioWorklet.connect(this.audioCtx.destination);
   }
 
   setCartridge(bytes: Uint8Array) {
     this.instance.setCartridge(bytes);
     this.instance.reset();
+    this.audioCtx.resume();
     this.active = true;
     this.updateFrameBuffer();
 
@@ -68,9 +82,9 @@ class Emulator {
       this.instance.stepVblank();
 
       const rawAudio = this.instance.drainAudioBuffer();
-      const audioBuffer = this.createAudioBuffer(rawAudio);
 
-      this.playAudioBuffer(audioBuffer);
+      if (this.audioWorklet) this.audioWorklet.port.postMessage(rawAudio);
+
       this.updateControllers();
       this.draw();
     }
@@ -82,19 +96,6 @@ class Emulator {
     const bufStart = this.instance.getFrameBufferPtr();
     const bufSize = 256 * 240 * 4;
     this.frameBuffer = new Uint8ClampedArray(memory.buffer, bufStart, bufSize);
-  }
-
-  private createAudioBuffer(raw: Float32Array) {
-    const buffer = this.audio.createBuffer(1, raw.length, 44100);
-    buffer.copyToChannel(raw, 0);
-    return buffer;
-  }
-
-  private playAudioBuffer(buffer: AudioBuffer) {
-    const source = this.audio.createBufferSource();
-    source.buffer = buffer;
-    source.connect(this.audio.destination);
-    source.start();
   }
 }
 
