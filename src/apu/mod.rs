@@ -132,9 +132,8 @@ impl Apu {
 
         let pulse_out = 95.88 / ((8128.0 / (p1 + p2)) + 100.0);
         let tnd_out = 159.79 / ((1.0 / ((t / 8227.0) + (n / 12241.0) + (d / 22638.0))) + 100.0);
-        let output = pulse_out + tnd_out; // 0.0 to 1.0
 
-        output * 2.0 - 1.0 // -1 to 1
+        pulse_out + tnd_out // 0.0 to 1.0
     }
 }
 
