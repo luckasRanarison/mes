@@ -23,7 +23,7 @@ mod status_flag {
     pub const I : u8 = 7;
 }
 
-const SAMPLE_LENGTH: usize = 1470;
+const SAMPLE_LENGTH: usize = 735;
 
 #[derive(Debug)]
 pub struct Apu {

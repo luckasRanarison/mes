@@ -19,7 +19,7 @@ class Emulator {
     this.controllers = [new Controller(defaultP1)];
     this.active = false;
     this.canvas = canvas.getContext("2d")!;
-    this.audioCtx = new AudioContext();
+    this.audioCtx = new AudioContext({ sampleRate: 44100 });
     this.initAudioWorklet();
   }
 
@@ -28,7 +28,7 @@ class Emulator {
 
     this.audioWorklet = new AudioWorkletNode(
       this.audioCtx,
-      "nes-audio-processor"
+      "nes-audio-processor",
     );
 
     this.audioWorklet.connect(this.audioCtx.destination);
