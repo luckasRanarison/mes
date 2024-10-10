@@ -9,7 +9,7 @@ use super::common::{Channel, Envelope, LengthCounter, Timer};
 
 #[derive(Debug, Default)]
 pub struct Noise {
-    envolope: Envelope,
+    envelope: Envelope,
     timer: Timer,
     length_counter: LengthCounter,
     mode: bool,
@@ -35,7 +35,7 @@ impl Channel for Noise {
     fn write_register(&mut self, address: u16, value: u8) {
         match address % 4 {
             0 => {
-                self.envolope.write(value);
+                self.envelope.write(value.get_range(0..5));
                 self.length_counter.set_halt(value.contains(5));
             }
             2 => {
@@ -45,14 +45,14 @@ impl Channel for Noise {
             }
             3 => {
                 self.length_counter.set_length(value >> 3);
-                self.envolope.restart();
+                self.envelope.restart();
             }
             _ => {} // unused
         }
     }
 
     fn raw_sample(&self) -> u8 {
-        self.envolope.volume()
+        self.envelope.volume()
     }
 
     fn is_active(&self) -> bool {
@@ -77,15 +77,14 @@ impl Clock for Noise {
             let rhs = self.shift.get(rhs_bit);
             let lhs = self.shift.get(0);
             let feedback = lhs ^ rhs;
-            self.shift >>= 1;
-            self.shift |= feedback << 14;
+            self.shift = (self.shift >> 1) | (feedback << 14);
         }
     }
 }
 
 impl ClockFrame for Noise {
     fn tick_frame(&mut self, frame: &Frame) {
-        self.envolope.tick();
+        self.envelope.tick();
 
         if frame.is_half() {
             self.length_counter.tick();
