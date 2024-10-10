@@ -2,21 +2,35 @@ class NesAudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
 
-    this.buffer = new Float32Array(1470);
+    this.queue = [];
+    this.bufferIndex = 0;
 
     this.port.onmessage = (event) => {
-      if (event.data) this.buffer.set(event.data);
+      if (event.data) this.queue.push(event.data);
     };
   }
 
   process(_, outputs) {
     const output = outputs[0];
-    const outputChannel = output[0];
+    const channel = output[0];
 
-    for (let i = 0; i < this.buffer.length; i++) {
-      // TODO: Queue samples
-      // What if the audio goes out of sync with the video?
-      // outputChannel[i] = this.buffer[i];
+    let buffer = this.queue[0];
+
+    if (!buffer) return true;
+
+    // FIXME: What if the audio goes out of sync with the output?
+    for (let i = 0; i < channel.length; i++) {
+      channel[i] = buffer[this.bufferIndex];
+
+      if (this.bufferIndex < buffer.length) {
+        this.bufferIndex += 1;
+      } else {
+        this.queue.shift();
+        this.bufferIndex = 0;
+        buffer = this.queue[0];
+
+        if (!buffer) break;
+      }
     }
 
     return true;

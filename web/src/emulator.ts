@@ -56,6 +56,7 @@ class Emulator {
 
   stop() {
     this.active = false;
+    this.audioCtx.suspend();
   }
 
   private updateControllers() {
