@@ -34,7 +34,7 @@ pub struct Apu {
     dmc: Dmc,
     frame_counter: FrameCounter,
     cycle: u64,
-    buffer: Vec<f32>, // FIXME: use fixed size buffer
+    buffer: Vec<f32>,
 }
 
 impl Apu {
@@ -107,10 +107,6 @@ impl Apu {
     }
 
     pub fn drain_buffer(&mut self) -> Vec<f32> {
-        while self.buffer.len() < SAMPLE_LENGTH {
-            self.buffer.push(0.0);
-        }
-
         self.buffer.drain(..).collect()
     }
 
@@ -157,7 +153,6 @@ impl Clock for Apu {
             self.noise.tick_frame(&frame);
         }
 
-        // FIXME: find a better sampling strategy
         // 44_100 / 60 == 735.x samples/frame
         // 29970 (CPU cycle) / 735 == 40.x cycles/frame
         if self.cycle % 41 == 0 && self.buffer.len() < SAMPLE_LENGTH {
