@@ -1,5 +1,6 @@
 import { Nes } from "mes";
 import { Controller } from "./controller";
+import audioWorkletUrl from "./workers/audio?worker&url";
 
 class Emulator {
   private instance: Nes;
@@ -8,36 +9,34 @@ class Emulator {
   private controllers: Controller[];
   private frameDuration = 1000 / 60;
   private lastTimestamp = 0;
-  private audioCtx: AudioContext;
+  private audio?: AudioContext;
   private audioWorklet?: AudioWorkletNode;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new Nes();
     this.controllers = [Controller.playerOne()];
     this.canvas = canvas.getContext("2d")!;
-    this.audioCtx = new AudioContext({ sampleRate: 44100 });
     this.active = false;
-    this.initAudioWorklet();
-  }
-
-  async initAudioWorklet() {
-    await this.audioCtx.audioWorklet.addModule("audio-processor.js");
-
-    this.audioWorklet = new AudioWorkletNode(
-      this.audioCtx,
-      "nes-audio-processor"
-    );
-
-    this.audioWorklet.connect(this.audioCtx.destination);
   }
 
   setCartridge(bytes: Uint8Array) {
     this.instance.setCartridge(bytes);
     this.instance.reset();
-    this.audioCtx.resume();
     this.active = true;
 
     requestAnimationFrame((timestamp) => this.loop(timestamp));
+  }
+
+  async initAudio() {
+    if (!this.audio) {
+      const ctx = new AudioContext({ sampleRate: 44100 });
+      await ctx.audioWorklet.addModule(audioWorkletUrl);
+      this.audioWorklet = new AudioWorkletNode(ctx, "nes-audio-processor");
+      this.audioWorklet.connect(ctx.destination);
+      this.audio = ctx;
+    }
+
+    this.audio.resume();
   }
 
   handleKeyEvent(event: KeyboardEvent, state: boolean) {
@@ -54,7 +53,7 @@ class Emulator {
 
   stop() {
     this.active = false;
-    this.audioCtx.suspend();
+    this.audio?.suspend();
   }
 
   private updateControllers() {
@@ -79,14 +78,17 @@ class Emulator {
       this.lastTimestamp = timestamp - (deltaTime % this.frameDuration);
 
       this.instance.stepFrame();
-      this.instance.stepVblank();
 
-      const rawAudio = this.instance.drainAudioBuffer();
-
-      if (this.audioWorklet) this.audioWorklet.port.postMessage(rawAudio);
+      if (this.audioWorklet) {
+        const rawAudio = this.instance.getAudioBuffer();
+        this.audioWorklet.port.postMessage(rawAudio);
+        this.instance.clearAudioBuffer();
+      }
 
       this.updateControllers();
       this.draw();
+
+      this.instance.stepVblank();
     }
 
     requestAnimationFrame((timestamp) => this.loop(timestamp));

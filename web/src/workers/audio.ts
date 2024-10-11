@@ -1,4 +1,7 @@
 class NesAudioProcessor extends AudioWorkletProcessor {
+  private queue: Float32Array[];
+  private bufferIndex: number;
+
   constructor() {
     super();
 
@@ -6,11 +9,13 @@ class NesAudioProcessor extends AudioWorkletProcessor {
     this.bufferIndex = 0;
 
     this.port.onmessage = (event) => {
-      if (event.data) this.queue.push(event.data);
+      if (event.data) {
+        this.queue.push(event.data);
+      }
     };
   }
 
-  process(_, outputs) {
+  process(_: Float32Array[][], outputs: Float32Array[][]) {
     const output = outputs[0];
     const channel = output[0];
 
@@ -29,7 +34,9 @@ class NesAudioProcessor extends AudioWorkletProcessor {
         this.bufferIndex = 0;
         buffer = this.queue[0];
 
-        if (!buffer) break;
+        if (!buffer) {
+          break;
+        }
       }
     }
 

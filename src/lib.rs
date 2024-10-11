@@ -12,6 +12,8 @@ mod wasm;
 
 pub mod error;
 
+use std::cell::Ref;
+
 use bus::MainBus;
 use cpu::Cpu;
 use error::Error;
@@ -62,8 +64,12 @@ impl Nes {
         }
     }
 
-    pub fn drain_audio_buffer(&mut self) -> Vec<f32> {
-        self.cpu.apu.borrow_mut().drain_buffer()
+    pub fn get_audio_buffer(&self) -> Ref<[f32]> {
+        Ref::map(self.cpu.apu.borrow(), |apu| apu.get_buffer())
+    }
+
+    pub fn clear_audio_buffer(&mut self) {
+        self.cpu.apu.borrow_mut().clear_buffer();
     }
 
     pub fn get_frame_buffer(&self) -> &[u8] {

@@ -106,8 +106,12 @@ impl Apu {
         }
     }
 
-    pub fn drain_buffer(&mut self) -> Vec<f32> {
-        self.buffer.drain(..).collect()
+    pub fn get_buffer(&self) -> &[f32] {
+        &self.buffer
+    }
+
+    pub fn clear_buffer(&mut self) {
+        self.buffer.clear();
     }
 
     pub fn take_dmc_cycles(&mut self) -> Option<u8> {
