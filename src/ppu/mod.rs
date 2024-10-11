@@ -519,7 +519,7 @@ impl Reset for Ppu {
         self.oam.reset();
         self.sprite.reset();
         self.bg.reset();
-        self.frame_buffer = Box::new([0; FRAME_BUFFER_SIZE]);
+        self.frame_buffer.fill(0);
     }
 }
 
