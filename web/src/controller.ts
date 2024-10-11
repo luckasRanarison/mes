@@ -10,30 +10,19 @@ enum Button {
   Right  = 0b0000_0001,
 }
 
-const defaultP1 = new Map([
-  ["KeyA", Button.A],
-  ["KeyZ", Button.B],
-  ["KeyQ", Button.A],
-  ["KeyW", Button.B],
-  ["Space", Button.Select],
-  ["Enter", Button.Start],
-  ["ArrowUp", Button.Up],
-  ["ArrowDown", Button.Down],
-  ["ArrowLeft", Button.Left],
-  ["ArrowRight", Button.Right],
-]);
+type ButtonMap = Record<string, Button | undefined>;
 
 class Controller {
   private value: number;
-  private mappings: Map<string, Button>;
+  private mappings: ButtonMap;
 
-  constructor(mappings: Map<string, Button>) {
+  constructor(mappings: ButtonMap) {
     this.value = 0b0000_0000;
     this.mappings = mappings;
   }
 
   handleKeyEvent(event: KeyboardEvent, state: boolean) {
-    const button = this.mappings.get(event.code);
+    const button = this.mappings[event.code];
 
     if (button) {
       this.updateButton(button, state);
@@ -53,6 +42,21 @@ class Controller {
   state() {
     return this.value;
   }
+
+  static playerOne() {
+    return new Controller({
+      KeyA: Button.A,
+      KeyZ: Button.B,
+      KeyQ: Button.A,
+      KeyW: Button.B,
+      Space: Button.Select,
+      Enter: Button.Start,
+      ArrowUp: Button.Up,
+      ArrowDown: Button.Down,
+      ArrowLeft: Button.Left,
+      ArrowRight: Button.Right,
+    });
+  }
 }
 
-export { Controller, defaultP1 };
+export { Controller };

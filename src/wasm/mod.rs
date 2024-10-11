@@ -1,5 +1,6 @@
 use crate::{mappers::create_mapper_mock, Nes as NesCore};
 use wasm_bindgen::prelude::*;
+use web_sys::js_sys::Uint8ClampedArray;
 
 #[wasm_bindgen]
 pub struct Nes(NesCore);
@@ -35,9 +36,10 @@ impl Nes {
         self.0.step_vblank();
     }
 
-    #[wasm_bindgen(js_name = "getFrameBufferPtr")]
-    pub fn get_frame_buffer_ptr(&self) -> *const u8 {
-        self.0.get_frame_buffer().as_ptr()
+    #[wasm_bindgen(js_name = "getFrameBuffer")]
+    pub fn get_frame_buffer(&self) -> Uint8ClampedArray {
+        let buffer = self.0.get_frame_buffer();
+        unsafe { Uint8ClampedArray::view(buffer) }
     }
 
     #[wasm_bindgen(js_name = "setPalette")]

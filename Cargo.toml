@@ -9,9 +9,10 @@ authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
 
 [dependencies]
 wasm-bindgen = { version = "0.2.90", optional = true }
+web-sys = { version = "0.3.72", optional = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [features]
-wasm = ["wasm-bindgen"]
+wasm = ["wasm-bindgen", "web-sys"]
