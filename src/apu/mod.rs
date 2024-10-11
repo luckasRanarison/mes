@@ -23,7 +23,7 @@ mod status_flag {
     pub const I : u8 = 7;
 }
 
-const SAMPLE_LENGTH: usize = 735;
+const BUFFER_CAPACITY: usize = 1024;
 
 #[derive(Debug)]
 pub struct Apu {
@@ -47,7 +47,7 @@ impl Apu {
             dmc: Dmc::new(mapper),
             frame_counter: FrameCounter::default(),
             cycle: 0,
-            buffer: Vec::with_capacity(SAMPLE_LENGTH),
+            buffer: Vec::with_capacity(BUFFER_CAPACITY),
         }
     }
 
@@ -159,7 +159,7 @@ impl Clock for Apu {
 
         // 44_100 / 60 == 735.x samples/frame
         // 29970 (CPU cycle) / 735 == 40.x cycles/frame
-        if self.cycle % 41 == 0 && self.buffer.len() < SAMPLE_LENGTH {
+        if self.cycle % 41 == 0 && self.buffer.len() < BUFFER_CAPACITY {
             self.buffer.push(self.get_sample());
         }
 

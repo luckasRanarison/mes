@@ -80,9 +80,8 @@ impl OutputUnit {
             _ => {}
         }
 
-        if self.shift_counter > 0 {
-            self.shift_counter -= 1;
-        }
+        self.shift_register >>= 1;
+        self.shift_counter -= 1;
     }
 }
 
