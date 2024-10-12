@@ -119,7 +119,7 @@ pub struct Dmc {
 
 impl Dmc {
     #[rustfmt::skip]
-    const RATES: [u16; 16] = [
+    const SAMPLE_RATES: [u16; 16] = [
         0x1AC, 0x17C, 0x154, 0x140, 0x11E, 0x0FE, 0x0E2, 0x0D6,
         0x0BE, 0x0A0, 0x08E, 0x080, 0x06A, 0x054, 0x048, 0x036,
     ];
@@ -171,7 +171,7 @@ impl Channel for Dmc {
             0 => {
                 self.irq_flag = value.contains(7);
                 self.loop_flag = value.contains(6);
-                self.timer.period = Self::RATES[value.get_range(0..4) as usize];
+                self.timer.period = Self::SAMPLE_RATES[value.get_range(0..4) as usize];
             }
             1 => self.output.level = value.get_range(0..7),
             2 => self.reader.sample_address = 0xC000 + (64 * value as u16),

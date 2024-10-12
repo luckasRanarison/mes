@@ -23,7 +23,7 @@ mod status_flag {
     pub const I : u8 = 7;
 }
 
-const BUFFER_CAPACITY: usize = 1024;
+const BUFFER_CAPACITY: usize = 735; // approxiamte sample/frame
 
 #[derive(Debug)]
 pub struct Apu {
@@ -33,8 +33,9 @@ pub struct Apu {
     noise: Noise,
     dmc: Dmc,
     frame_counter: FrameCounter,
+    buffer: Box<[f32; BUFFER_CAPACITY]>,
+    write_index: usize,
     cycle: u64,
-    buffer: Vec<f32>,
 }
 
 impl Apu {
@@ -46,8 +47,9 @@ impl Apu {
             noise: Noise::new(),
             dmc: Dmc::new(mapper),
             frame_counter: FrameCounter::default(),
+            buffer: Box::new([0.0; BUFFER_CAPACITY]),
+            write_index: 0,
             cycle: 0,
-            buffer: Vec::with_capacity(BUFFER_CAPACITY),
         }
     }
 
@@ -107,11 +109,14 @@ impl Apu {
     }
 
     pub fn get_buffer(&self) -> &[f32] {
-        &self.buffer
+        &self.buffer[..self.write_index]
     }
 
     pub fn clear_buffer(&mut self) {
-        self.buffer.clear();
+        while self.write_index > 0 {
+            self.buffer[self.write_index - 1] = 0.0;
+            self.write_index -= 1;
+        }
     }
 
     pub fn take_dmc_cycles(&mut self) -> Option<u8> {
@@ -157,10 +162,12 @@ impl Clock for Apu {
             self.noise.tick_frame(&frame);
         }
 
+        // TODO: Find a better sampling strategy
         // 44_100 / 60 == 735.x samples/frame
-        // 29970 (CPU cycle) / 735 == 40.x cycles/frame
-        if self.cycle % 41 == 0 && self.buffer.len() < BUFFER_CAPACITY {
-            self.buffer.push(self.get_sample());
+        // 29780 (CPU cycles) / 735 == 40.x cycles/frame
+        if self.cycle % 41 == 0 && self.write_index < BUFFER_CAPACITY {
+            self.buffer[self.write_index] = self.get_sample();
+            self.write_index += 1;
         }
 
         self.cycle += 1;
