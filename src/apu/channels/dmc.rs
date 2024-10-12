@@ -99,11 +99,11 @@ impl OutputUnit {
 
 impl Clock for OutputUnit {
     fn tick(&mut self) {
-        self.shift();
-
         if self.shift_counter == 0 {
             self.start_cycle();
         }
+
+        self.shift();
     }
 }
 
@@ -149,19 +149,7 @@ impl Dmc {
     }
 
     pub fn should_fetch(&self) -> bool {
-        self.reader.remaining_bytes > 0 && self.output.buffer.is_none()
-    }
-
-    fn fetch_sample(&mut self) {
-        self.output.buffer = self.reader.fetch_byte().into();
-
-        if self.reader.remaining_bytes == 0 {
-            if self.loop_flag {
-                self.reader.restart();
-            } else if self.irq_flag {
-                self.irq_status = true;
-            }
-        }
+        self.output.shift_counter == 0 && self.reader.remaining_bytes > 0
     }
 }
 
@@ -203,14 +191,22 @@ impl Channel for Dmc {
 
 impl Clock for Dmc {
     fn tick(&mut self) {
+        if self.should_fetch() {
+            self.output.buffer = self.reader.fetch_byte().into();
+
+            if self.reader.remaining_bytes == 0 {
+                if self.loop_flag {
+                    self.reader.restart();
+                } else if self.irq_flag {
+                    self.irq_status = true;
+                }
+            }
+        }
+
         self.timer.tick();
 
         if self.timer.is_zero() {
             self.output.tick();
-        }
-
-        if self.should_fetch() {
-            self.fetch_sample();
         }
     }
 }
