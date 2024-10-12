@@ -6,7 +6,7 @@ class NesAudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
 
-    this.buffer = new RingBuffer(4096);
+    this.buffer = new RingBuffer(8192);
 
     this.port.onmessage = ({ data }) => {
       if (data.reset) this.buffer.clear();
