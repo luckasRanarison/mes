@@ -62,6 +62,15 @@ struct OutputUnit {
 }
 
 impl OutputUnit {
+    fn new() -> Self {
+        Self {
+            shift_counter: 8,
+            ..Default::default()
+        }
+    }
+}
+
+impl OutputUnit {
     fn start_cycle(&mut self) {
         self.shift_counter = 8;
 
@@ -122,7 +131,7 @@ impl Dmc {
             irq_status: false,
             loop_flag: false,
             reader: Reader::new(mapper),
-            output: OutputUnit::default(),
+            output: OutputUnit::new(),
             timer: Timer::default(),
         }
     }
@@ -163,7 +172,7 @@ impl Channel for Dmc {
             0 => {
                 self.irq_flag = value.contains(7);
                 self.loop_flag = value.contains(6);
-                self.timer.period = Self::RATES[value.get_range(0..4) as usize] / 2;
+                self.timer.period = Self::RATES[value.get_range(0..4) as usize];
             }
             1 => self.output.level = value.get_range(0..7),
             2 => self.reader.sample_address = 0xC000 + (64 * value as u16),
@@ -196,10 +205,6 @@ impl Channel for Dmc {
 
 impl Clock for Dmc {
     fn tick(&mut self) {
-        if !self.enabled {
-            return;
-        }
-
         self.timer.tick();
 
         if self.timer.is_zero() {
