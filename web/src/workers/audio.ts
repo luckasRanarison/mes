@@ -9,9 +9,8 @@ class NesAudioProcessor extends AudioWorkletProcessor {
     this.buffer = new RingBuffer(4096);
 
     this.port.onmessage = ({ data }) => {
-      if (data) {
-        this.buffer.enqueue(data);
-      }
+      if (data.reset) this.buffer.clear();
+      if (data.samples) this.buffer.enqueue(data.samples);
     };
   }
 

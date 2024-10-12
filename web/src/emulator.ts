@@ -37,6 +37,7 @@ class Emulator {
     }
 
     this.audio.resume();
+    this.audioWorklet?.port.postMessage({ reset: true });
   }
 
   handleKeyEvent(event: KeyboardEvent, state: boolean) {
@@ -81,7 +82,7 @@ class Emulator {
 
       if (this.audioWorklet) {
         const rawAudio = this.instance.getAudioBuffer();
-        this.audioWorklet.port.postMessage(rawAudio);
+        this.audioWorklet.port.postMessage({ samples: rawAudio });
         this.instance.clearAudioBuffer();
       }
 

@@ -36,6 +36,12 @@ class RingBuffer {
       }
     }
   }
+
+  clear() {
+    this.size = 0;
+    this.writeIndex = 0;
+    this.readIndex = 0;
+  }
 }
 
 export default RingBuffer;

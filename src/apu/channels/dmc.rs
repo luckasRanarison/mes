@@ -83,7 +83,10 @@ impl OutputUnit {
     }
 
     fn shift(&mut self) {
-        match self.shift_register.get(0) {
+        let bit = self.shift_register.get(0);
+
+        match bit {
+            _ if self.silence_flag => {}
             1 if self.level < 126 => self.level += 2,
             0 if self.level > 1 => self.level -= 2,
             _ => {}
@@ -96,9 +99,7 @@ impl OutputUnit {
 
 impl Clock for OutputUnit {
     fn tick(&mut self) {
-        if !self.silence_flag {
-            self.shift();
-        }
+        self.shift();
 
         if self.shift_counter == 0 {
             self.start_cycle();
@@ -108,7 +109,6 @@ impl Clock for OutputUnit {
 
 #[derive(Debug)]
 pub struct Dmc {
-    enabled: bool,
     irq_flag: bool,
     irq_status: bool,
     loop_flag: bool,
@@ -126,7 +126,6 @@ impl Dmc {
 
     pub fn new(mapper: MapperChip) -> Self {
         Self {
-            enabled: false,
             irq_flag: false,
             irq_status: false,
             loop_flag: false,
@@ -189,15 +188,14 @@ impl Channel for Dmc {
     }
 
     fn is_mute(&self) -> bool {
-        !self.enabled
+        false
     }
 
     fn set_enabled(&mut self, value: bool) {
-        self.enabled = value;
-
-        if !self.enabled {
+        if !value {
             self.reader.remaining_bytes = 0;
-        } else {
+            self.output.silence_flag = true;
+        } else if self.reader.remaining_bytes == 0 {
             self.reader.restart();
         }
     }
