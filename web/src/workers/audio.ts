@@ -1,12 +1,12 @@
-import RingBuffer from "../ringbuffer";
+import AudioRingBuffer from "../ringbuffer";
 
 class NesAudioProcessor extends AudioWorkletProcessor {
-  private buffer: RingBuffer;
+  private buffer: AudioRingBuffer;
 
   constructor() {
     super();
 
-    this.buffer = new RingBuffer(8192);
+    this.buffer = new AudioRingBuffer(8192);
 
     this.port.onmessage = ({ data }) => {
       if (data.reset) this.buffer.clear();

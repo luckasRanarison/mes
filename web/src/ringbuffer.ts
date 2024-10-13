@@ -1,4 +1,4 @@
-class RingBuffer {
+class AudioRingBuffer {
   private buffer: Float32Array;
   private writeIndex: number;
   private readIndex: number;
@@ -11,13 +11,13 @@ class RingBuffer {
     this.readIndex = 0;
   }
 
-  enqueue(data: Float32Array) {
-    if (this.writeLength() < data.length) {
+  enqueue(samples: Float32Array) {
+    if (this.writeLength() < samples.length) {
       throw new Error("Ring buffer overflow");
     }
 
-    for (let i = 0; i < data.length; i++) {
-      this.buffer[this.writeIndex] = data[i];
+    for (let i = 0; i < samples.length; i++) {
+      this.buffer[this.writeIndex] = samples[i];
       this.writeIndex = (this.writeIndex + 1) % this.capacity;
     }
   }
@@ -45,4 +45,4 @@ class RingBuffer {
   }
 }
 
-export default RingBuffer;
+export default AudioRingBuffer;

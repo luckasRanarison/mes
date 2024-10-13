@@ -81,8 +81,8 @@ class Emulator {
       this.instance.stepFrame();
 
       if (this.audioWorklet) {
-        const rawAudio = this.instance.getAudioBuffer();
-        this.audioWorklet.port.postMessage({ samples: rawAudio });
+        const samples = this.instance.getAudioBuffer();
+        this.audioWorklet.port.postMessage({ samples });
         this.instance.clearAudioBuffer();
       }
 
