@@ -40,7 +40,7 @@ pub struct FrameCounter {
 impl FrameCounter {
     pub fn write(&mut self, value: u8) {
         self.flags = value;
-        self.interrupt = !value.contains(status_flag::I);
+        self.interrupt = self.interrupt && !value.contains(status_flag::I);
         self.sequencer = 0; // FIXME: apply 3-4 cycle delay
     }
 
@@ -64,9 +64,7 @@ impl FrameCounter {
     }
 
     fn set_interrupt(&mut self) {
-        if !self.flags.contains(status_flag::I) {
-            self.interrupt = true;
-        }
+        self.interrupt = !self.flags.contains(status_flag::I);
     }
 }
 
