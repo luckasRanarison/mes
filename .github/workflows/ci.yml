@@ -15,9 +15,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Initialize submodules
+        run: git submodule update --init
+
       - name: Build
         run: cargo build --verbose
+
       - name: Test
         run: cargo test --workspace --lib --verbose
+
       - name: Lint
         run: cargo clippy -- -D warnings
