@@ -23,7 +23,7 @@ mod status_flag {
     pub const I : u8 = 7;
 }
 
-const BUFFER_CAPACITY: usize = 735; // approxiamte sample/frame
+const BUFFER_CAPACITY: usize = 1024;
 
 #[derive(Debug)]
 pub struct Apu {
