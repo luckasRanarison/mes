@@ -2,8 +2,11 @@ mod mapper_000;
 mod mapper_001;
 mod mapper_002;
 mod mapper_003;
+mod mapper_004;
 
-use self::{mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::CnRom};
+use self::{
+    mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::CnRom, mapper_004::TxRom,
+};
 
 use crate::{
     cartridge::{create_cartridge_mock, Cartridge, Mirroring},
@@ -41,6 +44,7 @@ impl TryFrom<Cartridge> for MapperChip {
             1 => Ok(Self::new(SxRom::new(value))),
             2 => Ok(Self::new(UxRom::new(value))),
             3 => Ok(Self::new(CnRom::new(value))),
+            4 => Ok(Self::new(TxRom::new(value))),
             id => Err(Error::UnsupportedMapper(id)),
         }
     }
@@ -68,5 +72,7 @@ impl Reset for MapperChip {
 
 #[allow(unused)]
 pub fn create_mapper_mock() -> MapperChip {
-    create_cartridge_mock().try_into().unwrap()
+    let cartridge = create_cartridge_mock();
+    let mapper = NRom::new(cartridge);
+    MapperChip::new(mapper)
 }

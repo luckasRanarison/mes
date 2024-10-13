@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_load_rom() {
-        let rom = Cartridge::try_from_bytes(&NESTEST_ROM);
+        let rom = Cartridge::try_from_bytes(NESTEST_ROM);
 
         assert!(rom.is_ok());
     }
