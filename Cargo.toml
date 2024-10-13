@@ -16,3 +16,6 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 wasm = ["wasm-bindgen", "web-sys"]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
