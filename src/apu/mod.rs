@@ -1,9 +1,11 @@
 // https://www.nesdev.org/wiki/APU
 
 mod channels;
+mod filters;
 mod frame_counter;
 
 use channels::{Channel, Dmc, Noise, Pulse, Triangle};
+use filters::{Filter, FilterChain};
 use frame_counter::{ClockFrame, FrameCounter};
 
 use crate::{
@@ -24,6 +26,7 @@ mod status_flag {
 }
 
 const BUFFER_CAPACITY: usize = 1024;
+const SAMPLE_RATE: f32 = 44100.0;
 
 #[derive(Debug)]
 pub struct Apu {
@@ -35,6 +38,7 @@ pub struct Apu {
     frame_counter: FrameCounter,
     buffer: Box<[f32; BUFFER_CAPACITY]>,
     write_index: usize,
+    filters: FilterChain,
     cycle: u64,
 }
 
@@ -50,6 +54,11 @@ impl Apu {
             buffer: Box::new([0.0; BUFFER_CAPACITY]),
             write_index: 0,
             cycle: 0,
+            filters: FilterChain::new([
+                Filter::high_pass(SAMPLE_RATE, 90.0),
+                Filter::high_pass(SAMPLE_RATE, 440.0),
+                Filter::low_pass(SAMPLE_RATE, 14000.0),
+            ]),
         }
     }
 
@@ -141,8 +150,9 @@ impl Apu {
 
         let pulse_out = 95.88 / ((8128.0 / (p1 + p2)) + 100.0);
         let tnd_out = 159.79 / ((1.0 / ((t / 8227.0) + (n / 12241.0) + (d / 22638.0))) + 100.0);
+        let output = pulse_out + tnd_out; // 0.0 to 1.0
 
-        pulse_out + tnd_out // 0.0 to 1.0
+        self.filters.process(output)
     }
 }
 
