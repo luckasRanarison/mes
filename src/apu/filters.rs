@@ -10,11 +10,11 @@ pub struct Filter {
 }
 
 impl Filter {
-    pub fn low_pass(sample_rate: f32, cutoff: f32) -> Filter {
-        let c = sample_rate / (cutoff * PI);
+    pub fn low_pass(sample_rate: f32, cutoff_freq: f32) -> Self {
+        let c = sample_rate / (cutoff_freq * PI);
         let a0 = 1.0 / (1.0 + c);
 
-        Filter {
+        Self {
             b0: a0,
             b1: a0,
             a1: (1.0 - c) * a0,
@@ -23,11 +23,11 @@ impl Filter {
         }
     }
 
-    pub fn high_pass(sample_rate: f32, cutoff: f32) -> Filter {
-        let c = sample_rate / (cutoff * PI);
+    pub fn high_pass(sample_rate: f32, cutoff_freq: f32) -> Self {
+        let c = sample_rate / (cutoff_freq * PI);
         let a0 = 1.0 / (1.0 + c);
 
-        Filter {
+        Self {
             b0: c * a0,
             b1: -c * a0,
             a1: (1.0 - c) * a0,
