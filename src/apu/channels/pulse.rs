@@ -49,6 +49,7 @@ impl Channel for Pulse {
                 self.duty_mode = value.get_range(6..8);
                 self.length_counter.set_halt(value.contains(5));
                 self.envelope.write(value);
+                self.envelope.restart();
             }
             1 => self.sweep.write(value),
             2 => self.timer.set_period_lo(value),

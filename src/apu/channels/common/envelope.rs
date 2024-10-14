@@ -17,7 +17,6 @@ impl Envelope {
         self.loop_flag = value.contains(5);
         self.const_flag = value.contains(4);
         self.volume = value.get_range(0..4);
-        self.start = true;
     }
 
     pub fn volume(&self) -> u8 {
