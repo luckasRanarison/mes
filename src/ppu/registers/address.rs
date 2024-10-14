@@ -66,7 +66,7 @@ impl AddressRegister {
 
         if coarse_x == 31 {
             self.set_coarse_x(0);
-            self.0 ^= 0x400; // switch horizobtal nametable
+            self.0 ^= 0x400; // switch horizontal nametable
         } else {
             self.set_coarse_x(coarse_x + 1);
         }

@@ -26,8 +26,6 @@ use std::{
     rc::Rc,
 };
 
-const STACK_START: u16 = 0x100;
-
 pub struct Cpu {
     pc: u16,
     ac: u8,
@@ -43,6 +41,8 @@ pub struct Cpu {
 }
 
 impl Cpu {
+    const STACK_START: u16 = 0x100;
+
     pub fn new(bus: MainBus) -> Self {
         Self {
             pc: 0x00,
@@ -317,13 +317,13 @@ impl Cpu {
     }
 
     fn push_stack_u8(&mut self, value: u8) {
-        self.bus.write_u8(self.sp as u16 + STACK_START, value);
+        self.bus.write_u8(self.sp as u16 + Self::STACK_START, value);
         self.sp = self.sp.wrapping_sub(1);
     }
 
     fn pull_stack_u8(&mut self) -> u8 {
         self.sp = self.sp.wrapping_add(1);
-        self.bus.read_u8(self.sp as u16 + STACK_START)
+        self.bus.read_u8(self.sp as u16 + Self::STACK_START)
     }
 
     fn push_stack_u16(&mut self, value: u16) {
