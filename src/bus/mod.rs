@@ -156,7 +156,7 @@ impl Reset for MainBus {
     fn reset(&mut self) {
         self.cycle = 0;
         self.ppu.reset();
-        self.ram = [0; RAM_SIZE];
+        self.ram.fill(0);
         self.dma_adr.take();
         self.controller.reset();
     }

@@ -68,5 +68,7 @@ impl Reset for MapperChip {
 
 #[allow(unused)]
 pub fn create_mapper_mock() -> MapperChip {
-    create_cartridge_mock().try_into().unwrap()
+    let cartridge = create_cartridge_mock();
+    let mapper = NRom::new(cartridge);
+    MapperChip::new(mapper)
 }

@@ -88,8 +88,8 @@ impl Clock for PpuBus {}
 
 impl Reset for PpuBus {
     fn reset(&mut self) {
-        self.vram = [0; VRAM_SIZE];
-        self.palette = [0; PALETTE_SIZE];
+        self.vram.fill(0);
+        self.palette.fill(0);
         self.mapper.reset();
     }
 }
