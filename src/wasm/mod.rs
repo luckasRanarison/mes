@@ -1,4 +1,5 @@
 use crate::{mappers::create_mapper_mock, Nes as NesCore};
+
 use wasm_bindgen::prelude::*;
 use web_sys::js_sys::{Float32Array, Uint8ClampedArray};
 

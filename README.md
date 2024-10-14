@@ -11,6 +11,7 @@ A decent NES emulator built for the Web using Rust and WebAssembly. Try it [now]
 - Almost cycle accurate emulation
 - Supports [iNES 1.0](https://www.nesdev.org/wiki/INES) file format
 - Supports basic [mappers](#mappers)
+- Fairly decent audio quality
 - Implements some of the original hardware quirks
 
 ## Mappers
@@ -22,8 +23,8 @@ A decent NES emulator built for the Web using Rust and WebAssembly. Try it [now]
 
 ## TODOs
 
-- [ ] Audio support ([APU](https://www.nesdev.org/wiki/APU))
 - [ ] Settings interface (controllers, palette, ...)
+- [ ] Versions for other platforms (mobile, desktop, ...)
 
 ## References
 
