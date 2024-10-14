@@ -151,7 +151,13 @@ impl Dmc {
     }
 
     pub fn should_fetch(&self) -> bool {
-        self.output.shift_counter == 0 && self.reader.remaining_bytes > 0
+        self.output.shift_counter == 0
+            && self.output.buffer.is_none()
+            && self.reader.remaining_bytes > 0
+    }
+
+    pub fn set_mapper(&mut self, mapper: MapperChip) {
+        self.reader.mapper = mapper;
     }
 }
 
@@ -179,7 +185,7 @@ impl Channel for Dmc {
     }
 
     fn is_mute(&self) -> bool {
-        self.enabled
+        false
     }
 
     fn set_enabled(&mut self, value: bool) {

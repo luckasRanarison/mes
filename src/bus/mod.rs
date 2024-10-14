@@ -84,7 +84,8 @@ impl MainBus {
 
     pub fn set_mapper(&mut self, mapper: MapperChip) {
         self.mapper = mapper.clone();
-        self.ppu.bus.set_mapper(mapper);
+        self.ppu.bus.set_mapper(mapper.clone());
+        self.apu.borrow_mut().set_mapper(mapper);
     }
 
     fn setup_oam_dma(&mut self, offset: u8) {

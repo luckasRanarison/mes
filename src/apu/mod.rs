@@ -127,6 +127,10 @@ impl Apu {
         self.cycle % 2 == 1 && self.dmc.should_fetch()
     }
 
+    pub fn set_mapper(&mut self, mapper: MapperChip) {
+        self.dmc.set_mapper(mapper);
+    }
+
     // https://www.nesdev.org/wiki/APU_Mixer
     fn get_sample(&self) -> f32 {
         let p1 = self.pulse1.get_sample();
@@ -144,13 +148,13 @@ impl Apu {
 
 impl Clock for Apu {
     fn tick(&mut self) {
+        self.dmc.tick();
         self.triangle.tick();
 
         if self.cycle % 2 == 1 {
             self.pulse1.tick();
             self.pulse2.tick();
             self.noise.tick();
-            self.dmc.tick();
         }
 
         self.frame_counter.tick();
