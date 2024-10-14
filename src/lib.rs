@@ -1,4 +1,3 @@
-mod apu;
 mod bus;
 mod cartridge;
 mod controller;
@@ -11,8 +10,6 @@ mod utils;
 mod wasm;
 
 pub mod error;
-
-use std::cell::Ref;
 
 use bus::MainBus;
 use cpu::Cpu;
@@ -62,14 +59,6 @@ impl Nes {
         while self.cpu.bus.ppu.is_vblank() {
             self.cpu.step();
         }
-    }
-
-    pub fn get_audio_buffer(&self) -> Ref<[f32]> {
-        Ref::map(self.cpu.apu.borrow(), |apu| apu.get_buffer())
-    }
-
-    pub fn clear_audio_buffer(&mut self) {
-        self.cpu.apu.borrow_mut().clear_buffer();
     }
 
     pub fn get_frame_buffer(&self) -> &[u8] {

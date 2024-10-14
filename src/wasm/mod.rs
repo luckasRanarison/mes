@@ -1,6 +1,6 @@
 use crate::{mappers::create_mapper_mock, Nes as NesCore};
 use wasm_bindgen::prelude::*;
-use web_sys::js_sys::{Float32Array, Uint8ClampedArray};
+use web_sys::js_sys::Uint8ClampedArray;
 
 #[wasm_bindgen]
 pub struct Nes(NesCore);
@@ -34,17 +34,6 @@ impl Nes {
     #[wasm_bindgen(js_name = "stepVblank")]
     pub fn step_vblank(&mut self) {
         self.0.step_vblank();
-    }
-
-    #[wasm_bindgen(js_name = "getAudioBuffer")]
-    pub fn get_audio_buffer(&self) -> Float32Array {
-        let buffer = self.0.get_audio_buffer();
-        unsafe { Float32Array::view(&buffer) }
-    }
-
-    #[wasm_bindgen(js_name = "clearAudioBuffer")]
-    pub fn clear_audio_buffer(&mut self) {
-        self.0.clear_audio_buffer();
     }
 
     #[wasm_bindgen(js_name = "getFrameBuffer")]

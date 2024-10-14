@@ -10,7 +10,6 @@ use address::{Address, AddressMode};
 use opcodes::{Asm, OPCODES};
 
 use crate::{
-    apu::Apu,
     bus::{Bus, DmaState, MainBus},
     cpu::{
         interrupt::{Interrupt, INTERRUPT_LATENCY},
@@ -20,10 +19,8 @@ use crate::{
 };
 
 use std::{
-    cell::RefCell,
     fmt,
     ops::{BitAnd, BitOr, BitXor},
-    rc::Rc,
 };
 
 pub struct Cpu {
@@ -37,7 +34,6 @@ pub struct Cpu {
     dma: Option<DmaState>,
     interrupt: Option<Interrupt>,
     pub(crate) bus: MainBus,
-    pub(crate) apu: Rc<RefCell<Apu>>,
 }
 
 impl Cpu {
@@ -51,7 +47,6 @@ impl Cpu {
             y: 0x00,
             sr: StatusRegister::default(),
             sp: 0x00,
-            apu: bus.apu.clone(),
             bus,
             cycle: 0,
             dma: None,
@@ -61,33 +56,20 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let cycles = self.cycle();
-        let mut apu = self.apu.borrow_mut();
 
         for _ in 0..cycles {
             self.cycle += 1;
             self.bus.tick();
-            apu.tick();
-
-            if let Some(cycles) = apu.take_dmc_cycles() {
-                self.cycle += cycles as u64;
-            }
         }
     }
 
     pub fn cycle(&mut self) -> u8 {
-        self.interrupt = self
-            .interrupt
-            .or_else(|| self.bus.poll_interrupt())
-            .or_else(|| self.apu.borrow().poll_irq());
+        self.interrupt = self.interrupt.or(self.bus.poll_interrupt());
 
         if let Some(interrupt) = self.interrupt.take() {
             if self.handle_interrupt(interrupt) {
                 return INTERRUPT_LATENCY;
             }
-        }
-
-        if self.dma.is_some() && self.apu.borrow().incoming_dma() {
-            return 1; // DMC DMA is taken causing an extra alignment cycle
         }
 
         if let Some(address) = self.bus.poll_dma() {
@@ -109,7 +91,6 @@ impl Cpu {
         }
 
         let opcode = self.bus.read_u8(self.pc);
-
         self.increment_pc(1);
         self.execute(opcode)
     }

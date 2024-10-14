@@ -19,7 +19,6 @@ async function handleUpload(file?: File | null) {
   const bytes = new Uint8Array(buffer);
 
   try {
-    await emulator.initAudio();
     emulator.setCartridge(bytes);
     dragDropElement.classList.toggle("hidden");
     canvasContainer.classList.toggle("hidden");
