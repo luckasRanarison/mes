@@ -110,11 +110,12 @@ impl Clock for OutputUnit {
 #[derive(Debug)]
 pub struct Dmc {
     irq_flag: bool,
-    irq_status: bool,
+    interrupt: bool,
     loop_flag: bool,
     reader: Reader,
     output: OutputUnit,
     timer: Timer,
+    enabled: bool,
 }
 
 impl Dmc {
@@ -127,20 +128,21 @@ impl Dmc {
     pub fn new(mapper: MapperChip) -> Self {
         Self {
             irq_flag: false,
-            irq_status: false,
+            interrupt: false,
             loop_flag: false,
             reader: Reader::new(mapper),
             output: OutputUnit::new(),
             timer: Timer::default(),
+            enabled: false,
         }
     }
 
     pub fn irq(&self) -> bool {
-        self.irq_status
+        self.interrupt
     }
 
     pub fn clear_irq(&mut self) {
-        self.irq_status = false;
+        self.interrupt = false;
         self.irq_flag = false;
     }
 
@@ -160,6 +162,7 @@ impl Channel for Dmc {
                 self.irq_flag = value.contains(7);
                 self.loop_flag = value.contains(6);
                 self.timer.period = Self::SAMPLE_RATES[value.get_range(0..4) as usize];
+                self.interrupt = self.interrupt && !value.contains(7);
             }
             1 => self.output.level = value.get_range(0..7),
             2 => self.reader.sample_address = 0xC000 + (64 * value as u16),
@@ -176,11 +179,13 @@ impl Channel for Dmc {
     }
 
     fn is_mute(&self) -> bool {
-        false
+        self.enabled
     }
 
     fn set_enabled(&mut self, value: bool) {
-        if !value {
+        self.enabled = value;
+
+        if !self.enabled {
             self.reader.remaining_bytes = 0;
             self.output.silence_flag = true;
         } else if self.reader.remaining_bytes == 0 {
@@ -198,7 +203,7 @@ impl Clock for Dmc {
                 if self.loop_flag {
                     self.reader.restart();
                 } else if self.irq_flag {
-                    self.irq_status = true;
+                    self.interrupt = true;
                 }
             }
         }
