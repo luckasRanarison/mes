@@ -12,12 +12,10 @@ class AudioRingBuffer {
   }
 
   enqueue(samples: Float32Array) {
-    if (this.writeLength() < samples.length) {
-      throw new Error("Ring buffer overflow");
-    }
+    const enqueuable = samples.subarray(0, this.writeLength());
 
-    for (let i = 0; i < samples.length; i++) {
-      this.buffer[this.writeIndex] = samples[i];
+    for (let i = 0; i < enqueuable.length; i++) {
+      this.buffer[this.writeIndex] = enqueuable[i];
       this.writeIndex = (this.writeIndex + 1) % this.capacity;
     }
   }

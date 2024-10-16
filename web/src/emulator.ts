@@ -2,12 +2,13 @@ import { Nes } from "mes";
 import { Controller } from "./controller";
 import audioWorkletUrl from "./workers/audio?worker&url";
 
+const frameDuration = 1000 / 60;
+
 class Emulator {
   private instance: Nes;
   private active: boolean;
   private canvas: CanvasRenderingContext2D;
   private controllers: Controller[];
-  private frameDuration = 1000 / 60;
   private lastTimestamp = 0;
   private audio?: AudioContext;
   private audioWorklet?: AudioWorkletNode;
@@ -72,26 +73,26 @@ class Emulator {
 
   private loop(timestamp: number) {
     if (!this.active) return;
-
+  
     const deltaTime = timestamp - this.lastTimestamp;
-
-    if (deltaTime >= this.frameDuration) {
-      this.lastTimestamp = timestamp - (deltaTime % this.frameDuration);
-
+    let catchUpCount = Math.floor(deltaTime / frameDuration);
+  
+    while(catchUpCount--) {
       this.instance.stepFrame();
-
+  
       if (this.audioWorklet) {
         const samples = this.instance.getAudioBuffer();
         this.audioWorklet.port.postMessage({ samples });
         this.instance.clearAudioBuffer();
       }
-
+  
       this.updateControllers();
       this.draw();
-
       this.instance.stepVblank();
+  
+      this.lastTimestamp += frameDuration;
     }
-
+  
     requestAnimationFrame((timestamp) => this.loop(timestamp));
   }
 }
