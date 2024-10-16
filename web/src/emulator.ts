@@ -10,6 +10,7 @@ class Emulator {
   private canvas: CanvasRenderingContext2D;
   private controllers: Controller[];
   private lastTimestamp = 0;
+  private maxCatchUp = 100;
   private audio?: AudioContext;
   private audioWorklet?: AudioWorkletNode;
 
@@ -75,7 +76,7 @@ class Emulator {
     if (!this.active) return;
   
     const deltaTime = timestamp - this.lastTimestamp;
-    let catchUpCount = Math.floor(deltaTime / frameDuration);
+    let catchUpCount = Math.min(this.maxCatchUp, Math.floor(deltaTime / frameDuration));
   
     while(catchUpCount--) {
       this.instance.stepFrame();
