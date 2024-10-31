@@ -1,5 +1,7 @@
 use std::{cell::RefCell, f32::consts::PI};
 
+const SAMPLE_RATE: f32 = 44100.0;
+
 #[derive(Debug)]
 pub struct Filter {
     b0: f32,
@@ -47,13 +49,20 @@ impl Filter {
 }
 
 #[derive(Debug)]
-pub struct FilterChain(RefCell<Vec<Filter>>);
+pub struct FilterChain(RefCell<[Filter; 3]>);
+
+// https://www.nesdev.org/wiki/APU_Mixer
+impl Default for FilterChain {
+    fn default() -> Self {
+        Self(RefCell::new([
+            Filter::high_pass(SAMPLE_RATE, 90.0),
+            Filter::high_pass(SAMPLE_RATE, 440.0),
+            Filter::low_pass(SAMPLE_RATE, 14000.0),
+        ]))
+    }
+}
 
 impl FilterChain {
-    pub fn new(filters: impl IntoIterator<Item = Filter>) -> Self {
-        Self(filters.into_iter().collect::<Vec<_>>().into())
-    }
-
     pub fn process(&self, sample: f32) -> f32 {
         self.0
             .borrow_mut()

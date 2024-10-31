@@ -5,7 +5,7 @@ mod filters;
 mod frame_counter;
 
 use channels::{Channel, Dmc, Noise, Pulse, Triangle};
-use filters::{Filter, FilterChain};
+use filters::FilterChain;
 use frame_counter::{ClockFrame, FrameCounter};
 
 use crate::{
@@ -26,7 +26,6 @@ mod status_flag {
 }
 
 const BUFFER_CAPACITY: usize = 1024;
-const SAMPLE_RATE: f32 = 44100.0;
 
 #[derive(Debug)]
 pub struct Apu {
@@ -36,7 +35,7 @@ pub struct Apu {
     noise: Noise,
     dmc: Dmc,
     frame_counter: FrameCounter,
-    buffer: Box<[f32; BUFFER_CAPACITY]>,
+    buffer: [f32; BUFFER_CAPACITY],
     write_index: usize,
     filters: FilterChain,
     cycle: u64,
@@ -51,14 +50,10 @@ impl Apu {
             noise: Noise::new(),
             dmc: Dmc::new(mapper),
             frame_counter: FrameCounter::default(),
-            buffer: Box::new([0.0; BUFFER_CAPACITY]),
+            buffer: [0.0; BUFFER_CAPACITY],
             write_index: 0,
             cycle: 0,
-            filters: FilterChain::new([
-                Filter::high_pass(SAMPLE_RATE, 90.0),
-                Filter::high_pass(SAMPLE_RATE, 440.0),
-                Filter::low_pass(SAMPLE_RATE, 14000.0),
-            ]),
+            filters: FilterChain::default(),
         }
     }
 
