@@ -1,0 +1,8 @@
+[package]
+name = "mes-core"
+version = "0.1.0"
+edition = "2021"
+description = "Yet another NES emulator"
+license = "MIT"
+repository = "https//github.com/luckasRanarison/mes"
+authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]

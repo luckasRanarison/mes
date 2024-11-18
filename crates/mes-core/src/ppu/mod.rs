@@ -10,13 +10,10 @@ use crate::{
     utils::{BitFlag, Clock, Reset},
 };
 
-const SCREEN_WIDTH: usize = 256;
-const SCREEN_HEIGHT: usize = 240;
-const PALETTE_SIZE: usize = 192;
-const FRAME_BUFFER_SIZE: usize = SCREEN_WIDTH * SCREEN_HEIGHT * 4;
-
-// Generated from https://bisqwit.iki.fi/utils/nespalette.php
-const NES_PALETTE: &[u8; PALETTE_SIZE] = include_bytes!("../../palette/nespalette.pal");
+pub const SCREEN_WIDTH: usize = 256;
+pub const SCREEN_HEIGHT: usize = 240;
+pub const PALETTE_SIZE: usize = 192;
+pub const FRAME_BUFFER_SIZE: usize = SCREEN_WIDTH * SCREEN_HEIGHT;
 
 #[derive(Debug)]
 pub struct Ppu {
@@ -37,7 +34,6 @@ pub struct Ppu {
     bg: BackgroundData,
     sprite: SpriteData,
     frame_buffer: [u8; FRAME_BUFFER_SIZE],
-    palette: [u8; PALETTE_SIZE],
     pub(crate) bus: PpuBus,
 }
 
@@ -62,7 +58,6 @@ impl Ppu {
             bg: BackgroundData::default(),
             sprite: SpriteData::default(),
             frame_buffer: [0; FRAME_BUFFER_SIZE],
-            palette: *NES_PALETTE,
         }
     }
 }
@@ -164,10 +159,6 @@ impl Ppu {
 
     pub fn get_frame_buffer(&self) -> &[u8] {
         self.frame_buffer.as_slice()
-    }
-
-    pub fn set_palette(&mut self, palette: [u8; PALETTE_SIZE]) {
-        self.palette = palette;
     }
 
     fn increment_vram_address(&mut self) {
@@ -448,13 +439,10 @@ impl Ppu {
     }
 
     fn set_frame_pixel(&mut self, x: usize, y: usize, color: u8) {
-        let color_index = 3 * color as usize;
-        let frame_index = (y * 256 + x) * 4;
+        let color_index = 3 * color;
+        let frame_index = y * 256 + x;
 
-        self.frame_buffer[frame_index] = self.palette[color_index];
-        self.frame_buffer[frame_index + 1] = self.palette[color_index + 1];
-        self.frame_buffer[frame_index + 2] = self.palette[color_index + 2];
-        self.frame_buffer[frame_index + 3] = 255;
+        self.frame_buffer[frame_index] = color_index;
     }
 }
 
@@ -526,11 +514,11 @@ impl Reset for Ppu {
 #[cfg(test)]
 mod tests {
     use super::Ppu;
-    use crate::mappers::create_mapper_mock;
+    use crate::mappers::MapperChip;
 
     #[test]
     fn test_ppu_oam_read_write() {
-        let mapper = create_mapper_mock();
+        let mapper = MapperChip::mock();
         let mut ppu = Ppu::new(mapper);
 
         ppu.write_oam_address(0x0F);
@@ -544,7 +532,7 @@ mod tests {
 
     #[test]
     fn test_ppu_data_read_write() {
-        let mapper = create_mapper_mock();
+        let mapper = MapperChip::mock();
         let mut ppu = Ppu::new(mapper);
 
         ppu.write_addr(0x20);

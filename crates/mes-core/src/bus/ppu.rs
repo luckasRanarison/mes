@@ -97,11 +97,11 @@ impl Reset for PpuBus {
 #[cfg(test)]
 mod tests {
     use super::PpuBus;
-    use crate::{bus::Bus, mappers::create_mapper_mock};
+    use crate::{bus::Bus, mappers::MapperChip};
 
     #[test]
     fn test_ppu_bus_read_write() {
-        let mapper = create_mapper_mock();
+        let mapper = MapperChip::mock();
         let mut bus = PpuBus::new(mapper);
 
         bus.write_u8(0x2000, 0x20);

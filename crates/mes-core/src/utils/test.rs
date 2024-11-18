@@ -2,8 +2,8 @@ use std::{error::Error, fmt};
 
 use super::BitFlag;
 
-pub const NESTEST_ROM: &[u8] = include_bytes!("../../nes-test-roms/other/nestest.nes");
-pub const NESTEST_LOG: &str = include_str!("../../nes-test-roms/other/nestest.log");
+pub const NESTEST_ROM: &[u8] = include_bytes!("../../../../nes-test-roms/other/nestest.nes");
+pub const NESTEST_LOG: &str = include_str!("../../../../nes-test-roms/other/nestest.log");
 
 /// Represents parsed lines from nestest.log
 pub struct LogLine {

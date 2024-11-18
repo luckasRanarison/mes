@@ -1,21 +1,3 @@
-[package]
-name = "mes"
-version = "0.1.0"
-edition = "2021"
-description = "Yet another NES emulator"
-license = "MIT"
-repository = "https//github.com/luckasRanarison/mes"
-authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
-
-[dependencies]
-wasm-bindgen = { version = "0.2.90", optional = true }
-web-sys = { version = "0.3.72", optional = true }
-
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[features]
-wasm = ["wasm-bindgen", "web-sys"]
-
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
+[workspace]
+members = ["crates/mes-core", "crates/mes-wasm"]
+resolver = "2"

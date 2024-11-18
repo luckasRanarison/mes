@@ -65,8 +65,7 @@ class Emulator {
   }
 
   private draw() {
-    const frameBuffer = this.instance.getFrameBuffer();
-    const imageData = new ImageData(frameBuffer, 256, 240);
+    const imageData = this.instance.updateImageData();
     this.canvas.putImageData(imageData, 0, 0);
   }
 

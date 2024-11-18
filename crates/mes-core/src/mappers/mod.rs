@@ -6,7 +6,7 @@ mod mapper_003;
 use self::{mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::CnRom};
 
 use crate::{
-    cartridge::{create_cartridge_mock, Cartridge, Mirroring},
+    cartridge::{Cartridge, Mirroring},
     error::Error,
     utils::Reset,
 };
@@ -25,6 +25,12 @@ pub struct MapperChip(Rc<RefCell<dyn Mapper>>);
 impl MapperChip {
     fn new<M: Mapper + 'static>(mapper: M) -> Self {
         Self(Rc::new(RefCell::new(mapper)))
+    }
+
+    pub fn mock() -> Self {
+        let cartridge = Cartridge::default();
+        let mapper = NRom::new(cartridge);
+        Self::new(mapper)
     }
 
     pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
@@ -64,11 +70,4 @@ impl Reset for MapperChip {
     fn reset(&mut self) {
         self.0.borrow_mut().reset()
     }
-}
-
-#[allow(unused)]
-pub fn create_mapper_mock() -> MapperChip {
-    let cartridge = create_cartridge_mock();
-    let mapper = NRom::new(cartridge);
-    MapperChip::new(mapper)
 }

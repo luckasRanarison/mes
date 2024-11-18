@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "wasm": "wasm-pack build --features='wasm' --out-dir web/pkg",
+    "wasm": "wasm-pack build ../crates/mes-wasm --out-dir ../../web/pkg",
     "build": "npm run wasm && tsc && vite build",
     "preview": "vite preview --host"
   },

@@ -1,16 +1,12 @@
-mod apu;
-mod bus;
-mod cartridge;
-mod controller;
-mod cpu;
-mod mappers;
-mod ppu;
-mod utils;
-
-#[cfg(feature = "wasm")]
-mod wasm;
-
+pub mod apu;
+pub mod bus;
+pub mod cartridge;
+pub mod controller;
+pub mod cpu;
 pub mod error;
+pub mod mappers;
+pub mod ppu;
+pub mod utils;
 
 use std::cell::Ref;
 
@@ -74,10 +70,6 @@ impl Nes {
 
     pub fn get_frame_buffer(&self) -> &[u8] {
         self.cpu.bus.ppu.get_frame_buffer()
-    }
-
-    pub fn set_palette(&mut self, palette: [u8; 192]) {
-        self.cpu.bus.ppu.set_palette(palette);
     }
 
     pub fn set_controller_state(&mut self, id: usize, state: u8) {
