@@ -1,0 +1,11 @@
+[package]
+name = "mes-jni"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+jni = "0.21.1"
+mes-core = { path = "../mes-core" }
+
+[lib]
+crate-type = ["cdylib"]
