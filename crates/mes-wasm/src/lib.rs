@@ -1,19 +1,12 @@
-use mes_core::{
-    mappers::MapperChip,
-    ppu::{self, PALETTE_SIZE},
-    Nes as NesCore,
-};
+use mes_core::{mappers::MapperChip, ppu, Nes as NesCore};
 use wasm_bindgen::{prelude::*, Clamped};
 use web_sys::{js_sys::Float32Array, ImageData};
-
-// Generated from https://bisqwit.iki.fi/utils/nespalette.php
-const NES_PALETTE: &[u8; PALETTE_SIZE] = include_bytes!("../../../palette/nespalette.pal");
 
 #[wasm_bindgen]
 pub struct Nes {
     engine: NesCore,
     frame: Vec<u8>,
-    palette: [u8; PALETTE_SIZE],
+    palette: [u8; ppu::PALETTE_SIZE],
 }
 
 impl Default for Nes {
@@ -21,7 +14,7 @@ impl Default for Nes {
         let mapper = MapperChip::mock();
         let engine = NesCore::with_mapper(mapper);
         let frame = vec![0; ppu::FRAME_BUFFER_SIZE * 4];
-        let palette = *NES_PALETTE;
+        let palette = *ppu::COLOR_PALETTE;
 
         Self {
             engine,

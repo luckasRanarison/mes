@@ -15,6 +15,9 @@ pub const SCREEN_HEIGHT: usize = 240;
 pub const PALETTE_SIZE: usize = 192;
 pub const FRAME_BUFFER_SIZE: usize = SCREEN_WIDTH * SCREEN_HEIGHT;
 
+/// Generated from https://bisqwit.iki.fi/utils/nespalette.php
+pub const COLOR_PALETTE: &[u8; PALETTE_SIZE] = include_bytes!("../../../../palette/nespalette.pal");
+
 #[derive(Debug)]
 pub struct Ppu {
     vram_buffer: u8,

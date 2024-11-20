@@ -1,14 +1,14 @@
 mod utils;
 
 use jni::{
-    objects::{JByteArray, JClass, JFloatArray},
+    objects::{JByteArray, JClass, JFloatArray, JIntArray},
     JNIEnv,
 };
-use mes_core::{mappers::MapperChip, Nes};
+use mes_core::{mappers::MapperChip, ppu, Nes};
 use utils::{MutUnwrap, RefUnwrap};
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_init(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_init(
     _env: JNIEnv<'static>,
     _class: JClass,
 ) -> *mut Nes {
@@ -18,7 +18,7 @@ pub extern "C" fn Java_dev_luckasranarison_mes_Nes_init(
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_reset(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_reset(
     _env: JNIEnv<'static>,
     _class: JClass,
     nes: *mut Nes,
@@ -28,7 +28,7 @@ pub extern "C" fn Java_dev_luckasranarison_mes_Nes_reset(
 
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_free(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_free(
     _env: JNIEnv<'static>,
     _class: JClass,
     nes: *mut Nes,
@@ -37,31 +37,23 @@ pub extern "C" fn Java_dev_luckasranarison_mes_Nes_free(
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_setCartridge(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_setCartridge(
     mut env: JNIEnv<'static>,
     _class: JClass,
     nes: *mut Nes,
     cartridge: JByteArray,
 ) {
-    let len = env
-        .get_array_length(&cartridge)
-        .expect("Failed to get ROM length");
+    let buffer = env
+        .convert_byte_array(cartridge)
+        .expect("Failed to load ROM");
 
-    let mut buffer = vec![0; len as usize];
-
-    env.get_byte_array_region(&cartridge, 0, &mut buffer)
-        .expect("Failed to load ROM cartridge into buffer");
-
-    let ptr = buffer.as_ptr() as *const u8;
-    let buffer = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
-
-    if let Err(err) = nes.unwrap_mut().set_cartridge(buffer) {
+    if let Err(err) = nes.unwrap_mut().set_cartridge(&buffer) {
         env.throw(err.to_string()).unwrap();
     }
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_stepFrame(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_stepFrame(
     _env: JNIEnv<'static>,
     _class: JClass,
     nes: *mut Nes,
@@ -70,7 +62,7 @@ pub extern "C" fn Java_dev_luckasranarison_mes_Nes_stepFrame(
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_stepVblank(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_stepVblank(
     _env: JNIEnv<'static>,
     _class: JClass,
     nes: *mut Nes,
@@ -79,25 +71,20 @@ pub extern "C" fn Java_dev_luckasranarison_mes_Nes_stepVblank(
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_getAudioBuffer<'local>(
-    env: JNIEnv<'local>,
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_fillAudioBuffer(
+    env: JNIEnv<'static>,
     _class: JClass,
     nes: *const Nes,
-) -> JFloatArray<'local> {
+    float_arr: JFloatArray<'static>,
+) {
     let buffer = nes.unwrap_ref().get_audio_buffer();
-
-    let float_arr = env
-        .new_float_array(buffer.len() as i32)
-        .expect("Failed to get audio buffer length");
 
     env.set_float_array_region(&float_arr, 0, &buffer)
         .expect("Failed to load audio buffer");
-
-    float_arr
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_clearAudioBuffer(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_clearAudioBuffer(
     _env: JNIEnv<'static>,
     _class: JClass,
     nes: *mut Nes,
@@ -106,7 +93,7 @@ pub extern "C" fn Java_dev_luckasranarison_mes_Nes_clearAudioBuffer(
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_setControllerState(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_setControllerState(
     _env: JNIEnv<'static>,
     _class: JClass,
     nes: *mut Nes,
@@ -117,20 +104,25 @@ pub extern "C" fn Java_dev_luckasranarison_mes_Nes_setControllerState(
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_Nes_getFrameBuffer<'local>(
-    env: JNIEnv<'local>,
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_fillFrameBuffer(
+    mut env: JNIEnv<'static>,
     _class: JClass,
     nes: *const Nes,
-) -> JByteArray<'local> {
+    int_arr: JIntArray<'static>,
+) {
     let buffer = nes.unwrap_ref().get_frame_buffer();
-    let buffer = unsafe { std::slice::from_raw_parts(buffer.as_ptr() as *const i8, buffer.len()) };
 
-    let byte_arr = env
-        .new_byte_array(buffer.len() as i32)
-        .expect("Failed to get frame buffer length");
+    let mut elements = unsafe {
+        env.get_array_elements(&int_arr, jni::objects::ReleaseMode::CopyBack)
+            .expect("Failed to get frame buffer")
+    };
 
-    env.set_byte_array_region(&byte_arr, 0, buffer)
-        .expect("Failed to load frame buffer");
-
-    byte_arr
+    for (i, pixel) in buffer.iter().enumerate() {
+        let color_index = *pixel as usize;
+        let a = 255u32;
+        let r = ppu::COLOR_PALETTE[color_index] as u32;
+        let g = ppu::COLOR_PALETTE[color_index + 1] as u32;
+        let b = ppu::COLOR_PALETTE[color_index + 2] as u32;
+        elements[i] = (a << 24 | r << 16 | g << 8 | b) as i32;
+    }
 }
