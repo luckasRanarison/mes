@@ -62,7 +62,7 @@ pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_stepFrame(
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_stepVblank(
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_stepVBlank(
     _env: JNIEnv<'static>,
     _class: JClass,
     nes: *mut Nes,
