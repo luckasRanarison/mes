@@ -20,7 +20,6 @@ fun ActionButton(text: String, onPress: (Boolean) -> Unit) {
     BaseButton(
         modifier = Modifier
             .clip(CircleShape)
-            .background(Color.Gray.copy(alpha = 0.8f))
             .size(48.dp),
         onPress = { state -> onPress(state) },
     ) {

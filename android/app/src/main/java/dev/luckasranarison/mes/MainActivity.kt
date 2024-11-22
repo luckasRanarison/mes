@@ -90,7 +90,7 @@ fun App(viewModel: EmulatorViewModel, pickFile: ActivityResultLauncher<String>) 
 
     NavHost(
         navController = navController,
-        startDestination = "home",
+        startDestination = Routes.HOME,
         popExitTransition = { ExitTransition.None }
     ) {
         composable(Routes.HOME) {
@@ -100,7 +100,7 @@ fun App(viewModel: EmulatorViewModel, pickFile: ActivityResultLauncher<String>) 
             )
         }
         composable(Routes.EMULATOR) {
-            Emulator(viewModel = viewModel)
+            Emulator(viewModel = viewModel, controller = navController)
         }
     }
 }

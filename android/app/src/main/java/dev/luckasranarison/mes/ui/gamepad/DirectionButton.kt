@@ -28,9 +28,7 @@ fun DirectionButton(
     onPress: (Boolean) -> Unit
 ) {
     BaseButton(
-        modifier = modifier
-            .background(Color.Gray.copy(alpha = 0.8f))
-            .size(52.dp),
+        modifier = modifier.size(52.dp),
         onPress = { state -> onPress(state) },
     ) {
         Icon(

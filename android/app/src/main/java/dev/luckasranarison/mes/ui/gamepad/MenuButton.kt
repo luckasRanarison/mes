@@ -1,9 +1,6 @@
 package dev.luckasranarison.mes.ui.gamepad
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,9 +15,7 @@ import dev.luckasranarison.mes.lib.Button
 @Composable
 fun MenuButton(text: String, onPress: (Boolean) -> Unit) {
     BaseButton(
-        modifier = Modifier
-            .clip(RoundedCornerShape(5.dp))
-            .background(Color.Gray.copy(alpha = 0.8f)),
+        modifier = Modifier.clip(RoundedCornerShape(5.dp)),
         onPress = { state -> onPress(state) },
     ) {
         Text(

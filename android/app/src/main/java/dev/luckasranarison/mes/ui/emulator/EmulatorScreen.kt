@@ -2,8 +2,10 @@ package dev.luckasranarison.mes.ui.emulator
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
@@ -11,13 +13,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.*
+import androidx.navigation.NavHostController
 import dev.luckasranarison.mes.lib.FRAME_DURATION
 import dev.luckasranarison.mes.lib.createAudioTrack
 import dev.luckasranarison.mes.ui.gamepad.GamePadLayout
 import kotlinx.coroutines.delay
 
 @Composable
-fun Emulator(viewModel: EmulatorViewModel) {
+fun Emulator(viewModel: EmulatorViewModel, controller: NavHostController) {
     val ctx = LocalContext.current
     val emulatorView = remember { EmulatorView(ctx) }
     val audioTrack = remember { createAudioTrack() }
@@ -51,6 +54,8 @@ fun Emulator(viewModel: EmulatorViewModel) {
             }
         }
     }
+
+    EmulatorBackHandler(controller)
 
     FullScreenLandscapeBox {
         AndroidView(
@@ -89,4 +94,31 @@ fun FullScreenLandscapeBox(content: @Composable (BoxScope.() -> Unit)) {
             .fillMaxSize()
             .background(Color.Black)
     ) { content() }
+}
+
+@Composable
+fun EmulatorBackHandler(controller: NavHostController) {
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    BackHandler {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Confirm to exit") },
+            text = { Text("Are you sure to stop the emulation?") },
+            confirmButton = {
+                TextButton(onClick = { controller.popBackStack() }) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
