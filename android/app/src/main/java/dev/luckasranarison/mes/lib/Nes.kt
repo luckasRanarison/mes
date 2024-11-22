@@ -53,5 +53,4 @@ class NesObject {
         Nes.free(ptr)
         Log.i("mes", "Emulator instance was destroyed")
     }
-
 }
