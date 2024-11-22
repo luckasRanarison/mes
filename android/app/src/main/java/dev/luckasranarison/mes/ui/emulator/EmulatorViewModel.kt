@@ -7,27 +7,19 @@ import androidx.lifecycle.ViewModel
 import dev.luckasranarison.mes.lib.Button
 import dev.luckasranarison.mes.lib.Controller
 import dev.luckasranarison.mes.lib.NesObject
-import dev.luckasranarison.mes.lib.createAudioTrack
 
 class EmulatorViewModel : ViewModel() {
     private val _romLoadingState = mutableStateOf<RomLoadingState>(RomLoadingState.None)
     private val _isRunning = mutableStateOf(false)
     private val nes: NesObject = NesObject()
     private val controller = mutableStateOf(Controller())
-    private val audioTrack = createAudioTrack()
 
     val romLoadingState: State<RomLoadingState> = _romLoadingState
     val isRunning: State<Boolean> = _isRunning
 
-    init {
-        audioTrack.play()
-    }
-
     override fun onCleared() {
         super.onCleared()
         nes.free()
-        audioTrack.stop()
-        audioTrack.release()
     }
 
     fun setRom(rom: ByteArray) {
@@ -35,24 +27,15 @@ class EmulatorViewModel : ViewModel() {
         nes.reset()
     }
 
-    fun setLoadSuccess() {
-        _romLoadingState.value = RomLoadingState.Success
-    }
-
-    fun setLoadError(err: Exception) {
-        _romLoadingState.value = RomLoadingState.Error(err.message ?: "An unknown error occurred")
-    }
-
-    fun startEmulation() {
-        _romLoadingState.value = RomLoadingState.None
-        _isRunning.value = true
+    fun setLoadStatus(state: RomLoadingState) {
+        _romLoadingState.value = state
     }
 
     fun pauseEmulation() {
         _isRunning.value = false
     }
 
-    fun resumeEmulation() {
+    fun startEmulation() {
         _isRunning.value = true
     }
 
