@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
+import dev.luckasranarison.mes.lib.Rust
 import dev.luckasranarison.mes.ui.emulator.Emulator
 import dev.luckasranarison.mes.ui.theme.MesTheme
 import dev.luckasranarison.mes.ui.emulator.EmulatorViewModel
@@ -28,8 +29,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Rust.setPanicHook() // redirect rust panic output to Logcat
         enableEdgeToEdge()
         setContent { MesTheme { App(ctx = this) } }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        emulatorViewModel.pauseEmulation()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        emulatorViewModel.resumeEmulation()
     }
 
     val pickFile = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->

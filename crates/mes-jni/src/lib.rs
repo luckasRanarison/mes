@@ -7,6 +7,34 @@ use jni::{
 use mes_core::{mappers::MapperChip, ppu, Nes};
 use utils::{MutUnwrap, RefUnwrap};
 
+fn log_error(mut env: JNIEnv, tag: &str, message: &str) -> jni::errors::Result<()> {
+    let log_class = env.find_class("android/util/Log")?;
+    let j_tag = env.new_string(tag)?;
+    let j_message = env.new_string(message)?;
+
+    env.call_static_method(
+        log_class,
+        "e",
+        "(Ljava/lang/String;Ljava/lang/String;)I",
+        &[(&j_tag).into(), (&j_message).into()],
+    )?;
+
+    Ok(())
+}
+
+#[no_mangle]
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Rust_setPanicHook(
+    env: JNIEnv<'static>,
+    _class: JClass,
+) {
+    let jvm = env.get_java_vm().unwrap();
+
+    std::panic::set_hook(Box::new(move |info| {
+        let env = jvm.get_env().unwrap();
+        log_error(env, "mes", info.to_string().as_str()).unwrap();
+    }));
+}
+
 #[no_mangle]
 pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_init(
     _env: JNIEnv<'static>,
@@ -76,11 +104,13 @@ pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_fillAudioBuffer(
     _class: JClass,
     nes: *const Nes,
     float_arr: JFloatArray<'static>,
-) {
+) -> u32 {
     let buffer = nes.unwrap_ref().get_audio_buffer();
 
     env.set_float_array_region(&float_arr, 0, &buffer)
         .expect("Failed to load audio buffer");
+
+    buffer.len() as u32
 }
 
 #[no_mangle]

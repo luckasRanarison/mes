@@ -10,7 +10,7 @@ object Nes {
     external fun setCartridge(nes: NesPtr, bytes: ByteArray)
     external fun stepFrame(nes: NesPtr)
     external fun stepVBlank(nes: NesPtr)
-    external fun fillAudioBuffer(nes: NesPtr, buffer: FloatArray)
+    external fun fillAudioBuffer(nes: NesPtr, buffer: FloatArray): Int
     external fun clearAudioBuffer(nes: NesPtr)
     external fun fillFrameBuffer(nes: NesPtr, buffer: IntArray)
     external fun setControllerState(nes: NesPtr, id: Long, state: Byte)
@@ -44,9 +44,9 @@ class NesObject {
         return frameBuffer
     }
 
-    fun updateAudioBuffer(): FloatArray {
-        Nes.fillAudioBuffer(ptr, audioBuffer)
-        return audioBuffer
+    fun updateAudioBuffer(): Pair<FloatArray, Int> {
+        val length = Nes.fillAudioBuffer(ptr, audioBuffer)
+        return Pair(audioBuffer, length)
     }
 
     fun free() {
