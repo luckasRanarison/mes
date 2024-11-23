@@ -1,28 +1,28 @@
 package dev.luckasranarison.mes
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.*
 import dev.luckasranarison.mes.lib.Rust
 import dev.luckasranarison.mes.ui.emulator.Emulator
 import dev.luckasranarison.mes.ui.theme.MesTheme
 import dev.luckasranarison.mes.ui.emulator.EmulatorViewModel
-import dev.luckasranarison.mes.ui.emulator.RomLoadingState
 import dev.luckasranarison.mes.ui.home.Home
-import java.io.IOException
+import dev.luckasranarison.mes.ui.settings.Settings
 
+object Activities {
+    val GET_CONTENT = ActivityResultContracts.GetContent()
+    val GET_DIRECTORY = ActivityResultContracts.OpenDocumentTree()
+}
 
 class MainActivity : ComponentActivity() {
-    private val emulatorViewModel by viewModels<EmulatorViewModel>()
+    private val viewModel: EmulatorViewModel by viewModels { EmulatorViewModel.Factory }
 
     companion object {
         init {
@@ -38,69 +38,38 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MesTheme {
-                App(viewModel = emulatorViewModel, pickFile = pickFile)
+                App(viewModel = viewModel)
             }
         }
     }
 
     override fun onPause() {
         super.onPause()
-        emulatorViewModel.pauseEmulation()
+        viewModel.pauseEmulation()
     }
 
     override fun onResume() {
         super.onResume()
-        emulatorViewModel.startEmulation()
-    }
-
-    private val pickFile = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        try {
-            if (uri == null) return@registerForActivityResult
-
-            contentResolver.openInputStream(uri).use { handle ->
-                val rom = handle?.readBytes() ?: throw IOException("Failed to read ROM from file")
-                emulatorViewModel.setRom(rom)
-                emulatorViewModel.setLoadStatus(RomLoadingState.Success)
-            }
-        } catch (err: Exception) {
-            val message = err.message ?: "An unknown error occurred"
-            emulatorViewModel.setLoadStatus(RomLoadingState.Error(message))
-        }
+        viewModel.startEmulation()
     }
 }
 
 @Composable
-fun App(viewModel: EmulatorViewModel, pickFile: ActivityResultLauncher<String>) {
-    val ctx = LocalContext.current
+fun App(viewModel: EmulatorViewModel) {
     val navController = rememberNavController()
-    val romLoadingState by viewModel.romLoadingState
+    val currentStack by navController.currentBackStackEntryAsState()
 
-    LaunchedEffect(romLoadingState) {
-        when (romLoadingState) {
-            is RomLoadingState.None -> {}
-            is RomLoadingState.Success -> navController.navigate(Routes.EMULATOR)
-            is RomLoadingState.Error -> {
-                val errorMessage = (romLoadingState as RomLoadingState.Error).message
-                Toast.makeText(ctx, errorMessage, Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        viewModel.setLoadStatus(RomLoadingState.None)
-    }
-
-    NavHost(
-        navController = navController,
-        startDestination = Routes.HOME,
-        popExitTransition = { ExitTransition.None }
-    ) {
+    NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
-            Home(
-                pickFile = { pickFile.launch("*/*") },
-                controller = navController
-            )
+            Home(viewModel = viewModel, controller = navController)
         }
-        composable(Routes.EMULATOR) {
+        composable(Routes.EMULATOR, popExitTransition = { ExitTransition.None }) {
             Emulator(viewModel = viewModel, controller = navController)
+        }
+        composable(Routes.SETTINGS, popExitTransition = {
+            if (currentStack?.destination?.route == Routes.EMULATOR) ExitTransition.None else null
+        }) {
+            Settings(viewModel = viewModel, controller = navController)
         }
     }
 }

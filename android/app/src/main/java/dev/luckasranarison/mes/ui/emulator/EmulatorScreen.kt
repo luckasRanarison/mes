@@ -14,10 +14,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.*
 import androidx.navigation.NavHostController
-import dev.luckasranarison.mes.lib.FRAME_DURATION
 import dev.luckasranarison.mes.lib.createAudioTrack
 import dev.luckasranarison.mes.ui.gamepad.GamePadLayout
-import kotlinx.coroutines.delay
 
 @Composable
 fun Emulator(viewModel: EmulatorViewModel, controller: NavHostController) {
@@ -26,11 +24,8 @@ fun Emulator(viewModel: EmulatorViewModel, controller: NavHostController) {
     val audioTrack = remember { createAudioTrack() }
     val isRunning by viewModel.isRunning
 
-    LaunchedEffect(Unit) {
-        viewModel.startEmulation()
-    }
-
     DisposableEffect(Unit) {
+        viewModel.startEmulation()
         audioTrack.play()
 
         onDispose {
@@ -40,22 +35,14 @@ fun Emulator(viewModel: EmulatorViewModel, controller: NavHostController) {
     }
 
     LaunchedEffect(isRunning) {
-        var lastTimestamp = System.nanoTime()
-
-        while (isRunning) {
-            val timestamp = System.nanoTime()
-            val delta = timestamp - lastTimestamp
-
-            if (delta >= FRAME_DURATION) {
-                lastTimestamp += FRAME_DURATION
-                viewModel.doFrame(emulatorView, audioTrack)
-            } else {
-                delay((FRAME_DURATION - delta) / 1_000_000)
-            }
-        }
+        viewModel.runMainLoop(emulatorView, audioTrack)
     }
 
-    EmulatorBackHandler(controller)
+    EmulatorBackHandler(
+        controller = controller,
+        pauseEmulation = viewModel::pauseEmulation,
+        resumeEmulation = viewModel::startEmulation
+    )
 
     FullScreenLandscapeBox {
         AndroidView(
@@ -64,7 +51,7 @@ fun Emulator(viewModel: EmulatorViewModel, controller: NavHostController) {
                 .align(Alignment.Center)
                 .fillMaxSize()
         )
-        GamePadLayout(onPress = viewModel::updateController)
+        GamePadLayout(navController = controller, onPress = viewModel::updateController)
     }
 }
 
@@ -97,26 +84,37 @@ fun FullScreenLandscapeBox(content: @Composable (BoxScope.() -> Unit)) {
 }
 
 @Composable
-fun EmulatorBackHandler(controller: NavHostController) {
+fun EmulatorBackHandler(
+    controller: NavHostController,
+    pauseEmulation: () -> Unit,
+    resumeEmulation: () -> Unit
+) {
     var showExitDialog by remember { mutableStateOf(false) }
 
     BackHandler {
         showExitDialog = true
+        pauseEmulation()
     }
 
     if (showExitDialog) {
         AlertDialog(
-            onDismissRequest = { showExitDialog = false },
-            title = { Text("Confirm to exit") },
-            text = { Text("Are you sure to stop the emulation?") },
+            onDismissRequest = {
+                showExitDialog = false
+                resumeEmulation()
+            },
+            title = { Text(text = "Confirm to exit") },
+            text = { Text(text = "Are you sure to stop the emulation?") },
             confirmButton = {
                 TextButton(onClick = { controller.popBackStack() }) {
-                    Text("Confirm")
+                    Text(text = "Confirm")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) {
-                    Text("Cancel")
+                TextButton(onClick = {
+                    showExitDialog = false
+                    resumeEmulation()
+                }) {
+                    Text(text = "Cancel")
                 }
             }
         )

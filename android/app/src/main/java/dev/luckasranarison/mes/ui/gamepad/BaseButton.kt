@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 
@@ -27,10 +28,7 @@ fun BaseButton(
         modifier = modifier
             .background(
                 Color.Gray.copy(
-                    alpha = when (isPressed) {
-                        true -> 0.5f
-                        false -> 0.8f
-                    }
+                    alpha = if (isPressed) 0.5f else 0.8f
                 )
             )
             .pointerInput(Unit) {
