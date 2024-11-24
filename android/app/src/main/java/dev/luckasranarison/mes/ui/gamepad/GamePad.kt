@@ -36,7 +36,7 @@ fun GamePadLayout(onPress: (Button, Boolean) -> Unit, navController: NavHostCont
             onPress = onPress
         )
         IconButton(
-            onClick = { navController.navigate(Routes.SETTINGS) },
+            onClick = { navController.navigate(Routes.SETTINGS ) },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(24.dp)

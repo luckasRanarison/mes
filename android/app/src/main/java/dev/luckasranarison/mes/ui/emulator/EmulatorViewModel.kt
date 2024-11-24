@@ -21,8 +21,10 @@ import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import dev.luckasranarison.mes.data.dataStore
 import dev.luckasranarison.mes.lib.FRAME_DURATION
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() {
@@ -59,15 +61,17 @@ class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() 
         }
     }
 
-    fun loadRomFromDirectory(ctx: Context, uri: Uri) {
-        val parentId = DocumentsContract.getTreeDocumentId(uri)
-        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, parentId)
-        val tree = DocumentFile.fromTreeUri(ctx, childrenUri)
-        val files = tree?.listFiles()
-            ?.filter { file -> file.name?.endsWith(".nes") ?: false }
-            ?.map { file -> RomFile(name = file.name ?: "Unknown", uri = file.uri) }
+    suspend fun loadRomFromDirectory(ctx: Context, uri: Uri) {
+        withContext(Dispatchers.IO) {
+            val parentId = DocumentsContract.getTreeDocumentId(uri)
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, parentId)
+            val tree = DocumentFile.fromTreeUri(ctx, childrenUri)
+            val files = tree?.listFiles()
+                ?.filter { file -> file.name?.endsWith(".nes") ?: false }
+                ?.map { file -> RomFile(file) }
 
-        _romFiles.value = files
+            _romFiles.value = files
+        }
     }
 
     fun setRomDirectory(ctx: Context, uri: Uri) {

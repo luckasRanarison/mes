@@ -1,7 +1,6 @@
 package dev.luckasranarison.mes.ui.home
 
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.*
@@ -17,6 +16,7 @@ import dev.luckasranarison.mes.Activities
 import dev.luckasranarison.mes.Routes
 import dev.luckasranarison.mes.ui.emulator.EmulatorViewModel
 import dev.luckasranarison.mes.ui.emulator.RomLoadingState
+import dev.luckasranarison.mes.ui.rom.RomContainer
 
 @Composable
 fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
@@ -55,7 +55,7 @@ fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
     Scaffold(
         topBar = { HomeTopAppBar(controller = controller) },
         floatingActionButton = {
-            FloatingButton(onClick = { loadRomFromFile.launch("*/*") })
+            FloatingButton(onClick = { loadRomFromFile.launch("application/octet-stream") })
         }
     ) { innerPadding ->
         when {
@@ -80,7 +80,10 @@ fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
             else -> LazyColumn(modifier = Modifier.padding(innerPadding)) {
                 items(romFiles!!.size) { index ->
                     val file = romFiles!![index]
-                    RomCard(rom = file, onSelect = { viewModel.loadRomFromFile(ctx, file.uri) })
+                    RomContainer(
+                        rom = file,
+                        onSelect = { viewModel.loadRomFromFile(ctx, file.uri) }
+                    )
                 }
             }
         }
