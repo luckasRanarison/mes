@@ -15,6 +15,7 @@ object Nes {
     external fun fillFrameBuffer(nes: NesPtr, buffer: IntArray)
     external fun setControllerState(nes: NesPtr, id: Long, state: Byte)
     external fun free(nes: NesPtr)
+    external fun serializeRomHeader(rom: ByteArray): String
 }
 
 const val AUDIO_BUFFER_SIZE = 1024
@@ -22,6 +23,10 @@ const val SCREEN_WIDTH = 256
 const val SCREEN_HEIGHT = 240
 const val FRAME_BUFFER_SIZE = SCREEN_WIDTH * SCREEN_HEIGHT
 const val FRAME_DURATION = 1_000_000_000 / 60
+const val PRG_ROM_PAGE_SIZE = 16384;
+const val PRG_RAM_SIZE = 8192;
+const val CHR_ROM_PAGE_SIZE = 8192;
+val INES_ASCII = byteArrayOf(0x4E, 0x45, 0x53, 0x1A)
 
 class NesObject {
     private val ptr = Nes.init()

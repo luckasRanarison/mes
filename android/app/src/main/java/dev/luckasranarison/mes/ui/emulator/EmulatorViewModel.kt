@@ -13,14 +13,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import dev.luckasranarison.mes.data.RomFile
 import dev.luckasranarison.mes.data.SettingsRepository
-import dev.luckasranarison.mes.lib.Button
-import dev.luckasranarison.mes.lib.Controller
-import dev.luckasranarison.mes.lib.NesObject
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import dev.luckasranarison.mes.data.dataStore
-import dev.luckasranarison.mes.lib.FRAME_DURATION
+import dev.luckasranarison.mes.lib.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -67,15 +64,34 @@ class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() 
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, parentId)
             val tree = DocumentFile.fromTreeUri(ctx, childrenUri)
             val files = tree?.listFiles()
-                ?.filter { file -> file.name?.endsWith(".nes") ?: false }
-                ?.map { file -> RomFile(file) }
+                ?.mapNotNull { file -> runCatching { readRomMetadata(ctx, file) }.getOrNull() }
 
             _romFiles.value = files
         }
     }
 
+    private fun readRomMetadata(ctx: Context, file: DocumentFile): RomFile? {
+        val stream = ctx.contentResolver.openInputStream(file.uri)
+
+        stream?.use { handle ->
+            val headerBuffer = ByteArray(4)
+            val bytesRead = handle.read(headerBuffer, 0, 4)
+
+            if (bytesRead == 4 && headerBuffer contentEquals INES_ASCII) {
+                val remaining = handle.readBytes()
+                val stringMetaData = Nes.serializeRomHeader(headerBuffer + remaining)
+                return RomFile(file, stringMetaData)
+            }
+        }
+
+        throw Exception("Not a valid iNES file")
+    }
+
     fun setRomDirectory(ctx: Context, uri: Uri) {
-        ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        ctx.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
         viewModelScope.launch { settings.setRomDirectory(uri.toString()) }
     }
 

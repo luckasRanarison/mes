@@ -10,6 +10,10 @@ const PRG_RAM_SIZE: usize = 8192;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
 const CHR_RAM_PAGE_SIZE: usize = 8192;
 
+pub fn is_ines_file(bytes: &[u8]) -> bool {
+    bytes[0..4] == INES_ASCII
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Mirroring {
     Vertical,
@@ -30,8 +34,8 @@ pub struct Header {
 }
 
 impl Header {
-    fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        if bytes[0..4] != INES_ASCII {
+    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        if !is_ines_file(bytes) {
             return Err(Error::UnsupportedFileFormat);
         }
 

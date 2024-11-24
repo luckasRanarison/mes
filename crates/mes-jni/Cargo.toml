@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 jni = "0.21.1"
 mes-core = { path = "../mes-core" }
+mes-data = { path = "../mes-data" }
 
 [lib]
 crate-type = ["cdylib"]

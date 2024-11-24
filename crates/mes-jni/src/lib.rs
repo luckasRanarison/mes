@@ -1,10 +1,11 @@
 mod utils;
 
 use jni::{
-    objects::{JByteArray, JClass, JFloatArray, JIntArray},
+    objects::{JByteArray, JClass, JFloatArray, JIntArray, JObject, JString},
     JNIEnv,
 };
 use mes_core::{mappers::MapperChip, ppu, Nes};
+use mes_data::serialize_rom_header;
 use utils::{MutUnwrap, RefUnwrap};
 
 fn log_error(mut env: JNIEnv, tag: &str, message: &str) -> jni::errors::Result<()> {
@@ -33,6 +34,23 @@ pub extern "C" fn Java_dev_luckasranarison_mes_lib_Rust_setPanicHook(
         let env = jvm.get_env().unwrap();
         log_error(env, "mes", info.to_string().as_str()).unwrap();
     }));
+}
+
+#[no_mangle]
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_serializeRomHeader<'local>(
+    mut env: JNIEnv<'static>,
+    _class: JClass,
+    rom: JByteArray<'local>,
+) -> JString<'local> {
+    let bytes = env.convert_byte_array(rom).expect("Failed to load ROM");
+
+    match serialize_rom_header(&bytes) {
+        Ok(json) => env.new_string(json).unwrap(),
+        Err(err) => env
+            .throw(err.to_string())
+            .map(|_| JObject::null().into())
+            .unwrap(),
+    }
 }
 
 #[no_mangle]
