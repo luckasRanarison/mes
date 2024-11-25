@@ -40,9 +40,9 @@ pub struct Cpu {
     cycle: u64,
     dma: Option<DmaState>,
     interrupt: Option<Interrupt>,
-    #[serde(skip)]
+    #[cfg_attr(feature = "json", serde(skip))]
     pub(crate) bus: MainBus,
-    #[serde(skip)]
+    #[cfg_attr(feature = "json", serde(skip))]
     pub(crate) apu: Rc<RefCell<Apu>>,
 }
 

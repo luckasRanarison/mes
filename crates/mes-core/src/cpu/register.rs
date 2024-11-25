@@ -28,7 +28,7 @@ pub mod status_flag {
 }
 
 #[cfg_attr(feature = "json", derive(Serialize))]
-#[serde(transparent)]
+#[cfg_attr(feature = "json", serde(transparent))]
 pub struct StatusRegister(u8);
 
 impl Default for StatusRegister {
