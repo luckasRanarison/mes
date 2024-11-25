@@ -1,5 +1,8 @@
 // https://www.masswerk.at/6502/6502_instruction_set.html#registers
 
+#[cfg(feature = "json")]
+use serde::Serialize;
+
 use crate::utils::BitFlag;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -24,6 +27,8 @@ pub mod status_flag {
     pub const N:  u8 = 7;
 }
 
+#[cfg_attr(feature = "json", derive(Serialize))]
+#[serde(transparent)]
 pub struct StatusRegister(u8);
 
 impl Default for StatusRegister {

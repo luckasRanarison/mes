@@ -1,3 +1,3 @@
 [workspace]
-members = ["crates/mes-core", "crates/mes-data", "crates/mes-jni", "crates/mes-wasm"]
+members = ["crates/mes-core", "crates/mes-jni", "crates/mes-wasm"]
 resolver = "2"

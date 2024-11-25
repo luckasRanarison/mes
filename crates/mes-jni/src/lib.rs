@@ -4,8 +4,7 @@ use jni::{
     objects::{JByteArray, JClass, JFloatArray, JIntArray, JObject, JString},
     JNIEnv,
 };
-use mes_core::{mappers::MapperChip, ppu, Nes};
-use mes_data::serialize_rom_header;
+use mes_core::{json::serialize_rom_header, mappers::MapperChip, ppu, Nes};
 use utils::{MutUnwrap, RefUnwrap};
 
 fn log_error(mut env: JNIEnv, tag: &str, message: &str) -> jni::errors::Result<()> {
@@ -54,6 +53,17 @@ pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_serializeRomHeader<'local
 }
 
 #[no_mangle]
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_serializeCpu<'local>(
+    env: JNIEnv<'static>,
+    _class: JClass,
+    nes: *const Nes,
+) -> JString<'local> {
+    let json = nes.unwrap_ref().serialize_cpu();
+    let jstring = env.new_string(json).unwrap();
+    jstring
+}
+
+#[no_mangle]
 pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_init(
     _env: JNIEnv<'static>,
     _class: JClass,
@@ -96,6 +106,15 @@ pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_setCartridge(
     if let Err(err) = nes.unwrap_mut().set_cartridge(&buffer) {
         env.throw(err.to_string()).unwrap();
     }
+}
+
+#[no_mangle]
+pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_step(
+    _env: JNIEnv<'static>,
+    _class: JClass,
+    nes: *mut Nes,
+) {
+    nes.unwrap_mut().step();
 }
 
 #[no_mangle]

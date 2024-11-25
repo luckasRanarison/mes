@@ -8,6 +8,7 @@ object Nes {
     external fun init(): NesPtr
     external fun reset(nes: NesPtr)
     external fun setCartridge(nes: NesPtr, bytes: ByteArray)
+    external fun step(nes: NesPtr)
     external fun stepFrame(nes: NesPtr)
     external fun stepVBlank(nes: NesPtr)
     external fun fillAudioBuffer(nes: NesPtr, buffer: FloatArray): Int
@@ -15,6 +16,7 @@ object Nes {
     external fun fillFrameBuffer(nes: NesPtr, buffer: IntArray)
     external fun setControllerState(nes: NesPtr, id: Long, state: Byte)
     external fun free(nes: NesPtr)
+    external fun serializeCpu(nes: NesPtr): String
     external fun serializeRomHeader(rom: ByteArray): String
 }
 
@@ -39,10 +41,12 @@ class NesObject {
 
     fun reset() = Nes.reset(ptr)
     fun setCartridge(bytes: ByteArray) = Nes.setCartridge(ptr, bytes)
+    fun step() = Nes.step(ptr)
     fun stepFrame() = Nes.stepFrame(ptr)
     fun stepVBlank() = Nes.stepVBlank(ptr)
     fun clearAudioBuffer() = Nes.clearAudioBuffer(ptr)
     fun setControllerState(id: Long, state: Byte) = Nes.setControllerState(ptr, id, state)
+    fun serializeCpu() = Nes.serializeCpu(ptr)
 
     fun updateFrameBuffer(): IntArray {
         Nes.fillFrameBuffer(ptr, frameBuffer)

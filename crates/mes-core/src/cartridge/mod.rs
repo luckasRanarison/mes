@@ -2,6 +2,9 @@
 
 use crate::{error::Error, utils::BitFlag};
 
+#[cfg(feature = "json")]
+use serde::Serialize;
+
 const INES_ASCII: [u8; 4] = [0x4E, 0x45, 0x53, 0x1A];
 const INES_HEADER_SIZE: usize = 16;
 const TRAINER_SIZE: usize = 512;
@@ -15,6 +18,7 @@ pub fn is_ines_file(bytes: &[u8]) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize))]
 pub enum Mirroring {
     Vertical,
     Horizontal,
@@ -23,6 +27,7 @@ pub enum Mirroring {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize))]
 pub struct Header {
     pub prg_rom_pages: u8,
     pub chr_rom_pages: u8,

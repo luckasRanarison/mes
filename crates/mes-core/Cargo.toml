@@ -6,3 +6,11 @@ description = "Yet another NES emulator"
 license = "MIT"
 repository = "https//github.com/luckasRanarison/mes"
 authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
+
+[features]
+default = []
+json = ["serde", "serde_json"]
+
+[dependencies]
+serde = { version = "1.0.215", features = ["derive"], optional = true }
+serde_json = { version = "1.0.133", optional = true }

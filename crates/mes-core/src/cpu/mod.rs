@@ -6,6 +6,9 @@ mod register;
 
 pub mod interrupt;
 
+#[cfg(feature = "json")]
+use serde::Serialize;
+
 use address::{Address, AddressMode};
 use opcodes::{Asm, OPCODES};
 
@@ -26,6 +29,7 @@ use std::{
     rc::Rc,
 };
 
+#[cfg_attr(feature = "json", derive(Serialize))]
 pub struct Cpu {
     pc: u16,
     ac: u8,
@@ -36,7 +40,9 @@ pub struct Cpu {
     cycle: u64,
     dma: Option<DmaState>,
     interrupt: Option<Interrupt>,
+    #[serde(skip)]
     pub(crate) bus: MainBus,
+    #[serde(skip)]
     pub(crate) apu: Rc<RefCell<Apu>>,
 }
 

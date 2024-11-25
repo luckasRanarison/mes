@@ -1,4 +1,8 @@
+#[cfg(feature = "json")]
+use serde::Serialize;
+
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize))]
 pub struct DmaState {
     pub high_byte: u8,
     pub current_page: u8,
