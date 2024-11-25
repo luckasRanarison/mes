@@ -1,5 +1,6 @@
 package dev.luckasranarison.mes
 
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
@@ -35,7 +36,9 @@ fun App(viewModel: EmulatorViewModel) {
         composable(Routes.EMULATOR, popExitTransition = { ExitTransition.None }) {
             Emulator(viewModel = viewModel, controller = navController)
         }
-        composable(Routes.SETTINGS) {
+        composable(Routes.SETTINGS, enterTransition = {
+            if (initialState.destination.route == Routes.EMULATOR) EnterTransition.None else null
+        }) {
             Settings(viewModel = viewModel, controller = navController)
         }
     }

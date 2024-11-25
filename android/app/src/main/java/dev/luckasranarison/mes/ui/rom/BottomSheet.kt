@@ -3,6 +3,7 @@ package dev.luckasranarison.mes.ui.rom
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -15,6 +16,7 @@ import dev.luckasranarison.mes.lib.CHR_ROM_PAGE_SIZE
 import dev.luckasranarison.mes.lib.PRG_RAM_SIZE
 import dev.luckasranarison.mes.lib.PRG_ROM_PAGE_SIZE
 import dev.luckasranarison.mes.ui.theme.Typography
+import kotlinx.coroutines.launch
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,6 +25,7 @@ fun BottomSheet(
     onClose: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
         onDismissRequest = { onClose() },
@@ -63,7 +66,9 @@ fun BottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { onClose() },
+                onClick = {
+                    scope.launch { sheetState.hide(); onClose() }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary)
             ) {
