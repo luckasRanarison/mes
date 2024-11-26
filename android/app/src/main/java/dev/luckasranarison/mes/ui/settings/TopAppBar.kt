@@ -11,16 +11,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun SettingsTopAppBar(controller: NavHostController) {
+fun SettingsTopAppBar(onExit: () -> Unit) {
     TopAppBar(
         title = { Text("Settings") },
         modifier = Modifier.padding(bottom = 8.dp),
         navigationIcon = {
-            IconButton(onClick = { controller.popBackStack() }) {
+            IconButton(onClick = onExit) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back"

@@ -1,4 +1,4 @@
-package dev.luckasranarison.mes.ui.emulator
+package dev.luckasranarison.mes.vm
 
 import android.content.Context
 import android.content.Intent
@@ -18,6 +18,7 @@ import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import dev.luckasranarison.mes.data.dataStore
 import dev.luckasranarison.mes.lib.*
+import dev.luckasranarison.mes.ui.emulator.EmulatorView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

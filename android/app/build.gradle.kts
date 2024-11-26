@@ -1,3 +1,6 @@
+import com.android.build.gradle.internal.tasks.factory.dependsOn
+import java.nio.file.Path
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -28,16 +31,21 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
     }
+
+    project.tasks.preBuild.dependsOn("buildRust")
 }
 
 dependencies {
@@ -62,4 +70,45 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+tasks.register("buildRust") {
+    group = "build setup"
+    description = "Builds the Rust shared library used with JNI"
+
+    dependsOn("buildRustx86_64")
+    dependsOn("buildRustArm64")
+}
+
+tasks.register("buildRustArm64") {
+    group = "build setup"
+    description = "Builds the Rust shared library for arm64"
+
+    buildRustLibrary("aarch64", "arm64-v8a")
+}
+
+tasks.register("buildRustx86_64") {
+    group = "build setup"
+    description = "Builds the Rust shared library for x86_64"
+
+    buildRustLibrary("x86_64")
+}
+
+fun buildRustLibrary(rustArch: String, directoryArch: String? = null) {
+    val scriptFile = project.buildscript.sourceFile!!
+    val parentPath = Path.of(scriptFile.parent!!)
+    val libPath = parentPath.resolve("src/main/jniLibs")
+    val buildPath = parentPath.resolve("../../target/$rustArch-linux-android/release/libmes_jni.so")
+    val archLibPath = libPath.resolve(directoryArch ?: rustArch)
+
+    exec {
+        commandLine(
+            "cargo",
+            "build",
+            "-p=mes-jni",
+            "--target=$rustArch-linux-android",
+            "--release"
+        )
+        commandLine("cp", buildPath, archLibPath)
+    }
 }

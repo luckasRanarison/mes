@@ -49,7 +49,9 @@ fun RomContainer(rom: RomFile, onSelect: (Uri) -> Unit) {
             )
 
             Text(
-                text = rom.name,
+                text = rom.name
+                    .removeSuffix(".nes")
+                    .removeSuffix(".NES"),
                 style = Typography.titleMedium,
                 modifier = Modifier
                     .weight(1f)

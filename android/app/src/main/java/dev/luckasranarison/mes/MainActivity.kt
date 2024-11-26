@@ -8,7 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import dev.luckasranarison.mes.lib.Rust
 import dev.luckasranarison.mes.ui.theme.MesTheme
-import dev.luckasranarison.mes.ui.emulator.EmulatorViewModel
+import dev.luckasranarison.mes.vm.EmulatorViewModel
 
 object Activities {
     val GET_CONTENT = ActivityResultContracts.GetContent()

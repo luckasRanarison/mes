@@ -6,37 +6,54 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import dev.luckasranarison.mes.Routes
-import dev.luckasranarison.mes.lib.Button
+import dev.luckasranarison.mes.ui.settings.FloatingSettings
+import dev.luckasranarison.mes.vm.EmulatorViewModel
 
 @Composable
-fun GamePadLayout(onPress: (Button, Boolean) -> Unit, navController: NavHostController) {
+fun GamePadLayout(viewModel: EmulatorViewModel) {
+    var showSettings by remember { mutableStateOf(false) }
+
+    if (showSettings) {
+        FloatingSettings(
+            viewModel = viewModel,
+            onExit = { showSettings = false }
+        )
+    }
+
+    LaunchedEffect(showSettings) {
+        if (showSettings) {
+            viewModel.pauseEmulation()
+        } else {
+            viewModel.startEmulation()
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         DirectionPad(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = 72.dp, top = 72.dp),
-            onPress = onPress
+            onPress = viewModel::updateController
         )
         MenuPad(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 16.dp),
-            onPress = onPress
+            onPress = viewModel::updateController
         )
         ActionPad(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 48.dp, top = 72.dp),
-            onPress = onPress
+            onPress = viewModel::updateController
         )
         IconButton(
-            onClick = { navController.navigate(Routes.SETTINGS ) },
+            onClick = { showSettings = true },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(24.dp)

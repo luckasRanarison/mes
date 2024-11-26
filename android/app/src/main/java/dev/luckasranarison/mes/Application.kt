@@ -8,7 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dev.luckasranarison.mes.anim.Animations
 import dev.luckasranarison.mes.ui.emulator.Emulator
-import dev.luckasranarison.mes.ui.emulator.EmulatorViewModel
+import dev.luckasranarison.mes.vm.EmulatorViewModel
 import dev.luckasranarison.mes.ui.home.Home
 import dev.luckasranarison.mes.ui.settings.Settings
 
@@ -39,7 +39,7 @@ fun App(viewModel: EmulatorViewModel) {
         composable(Routes.SETTINGS, enterTransition = {
             if (initialState.destination.route == Routes.EMULATOR) EnterTransition.None else null
         }) {
-            Settings(viewModel = viewModel, controller = navController)
+            Settings(viewModel = viewModel, onExit = navController::popBackStack)
         }
     }
 }

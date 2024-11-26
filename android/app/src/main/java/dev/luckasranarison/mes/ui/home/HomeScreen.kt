@@ -14,8 +14,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import dev.luckasranarison.mes.Activities
 import dev.luckasranarison.mes.Routes
-import dev.luckasranarison.mes.ui.emulator.EmulatorViewModel
-import dev.luckasranarison.mes.ui.emulator.RomLoadingState
+import dev.luckasranarison.mes.vm.EmulatorViewModel
+import dev.luckasranarison.mes.vm.RomLoadingState
 import dev.luckasranarison.mes.ui.rom.RomContainer
 
 @Composable
