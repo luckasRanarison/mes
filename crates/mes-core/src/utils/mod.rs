@@ -81,6 +81,10 @@ where
     }
 }
 
+pub trait MemoryObserver {
+    fn observe(&mut self, bytes: &[u8]);
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::BitFlag;

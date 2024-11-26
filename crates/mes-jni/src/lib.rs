@@ -53,17 +53,6 @@ pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_serializeRomHeader<'local
 }
 
 #[no_mangle]
-pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_serializeCpu<'local>(
-    env: JNIEnv<'static>,
-    _class: JClass,
-    nes: *const Nes,
-) -> JString<'local> {
-    let json = nes.unwrap_ref().serialize_cpu();
-    let jstring = env.new_string(json).unwrap();
-    jstring
-}
-
-#[no_mangle]
 pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_init(
     _env: JNIEnv<'static>,
     _class: JClass,

@@ -1,6 +1,9 @@
 // https://www.nesdev.org/wiki/INES
 
-use crate::{error::Error, utils::BitFlag};
+use crate::{
+    error::Error,
+    utils::{BitFlag, MemoryObserver},
+};
 
 #[cfg(feature = "json")]
 use serde::Serialize;
@@ -85,13 +88,19 @@ pub enum PrgPage {
     Last16,
 }
 
-#[derive(Debug)]
 pub struct Cartridge {
     pub header: Header,
     pub prg_rom: Vec<u8>,
     pub chr_rom: Vec<u8>,
     pub prg_ram: Vec<u8>,
     pub chr_ram: Vec<u8>,
+    pub observer: Option<Box<dyn MemoryObserver>>,
+}
+
+impl std::fmt::Debug for Cartridge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.header)
+    }
 }
 
 impl Cartridge {
@@ -115,11 +124,16 @@ impl Cartridge {
             chr_rom,
             prg_ram,
             chr_ram,
+            observer: None,
         })
     }
 
     pub fn write_prg_ram(&mut self, address: u16, value: u8) {
         self.prg_ram[address as usize & 0x1FFF] = value;
+
+        if let Some(observer) = &mut self.observer {
+            observer.observe(&self.prg_ram);
+        }
     }
 
     pub fn write_chr_ram(&mut self, address: u16, value: u8, page: ChrPage) {
@@ -180,6 +194,7 @@ impl Default for Cartridge {
             chr_rom: vec![0; CHR_ROM_PAGE_SIZE],
             prg_ram: vec![],
             chr_ram: vec![],
+            observer: None,
         }
     }
 }

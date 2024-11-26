@@ -42,9 +42,13 @@ impl Nes {
         Self { cpu }
     }
 
+    pub fn set_mapper(&mut self, mapper: MapperChip) {
+        self.cpu.bus.set_mapper(mapper);
+    }
+
     pub fn set_cartridge(&mut self, bytes: &[u8]) -> Result<(), Error> {
         let mapper = MapperChip::try_from_bytes(bytes)?;
-        self.cpu.bus.set_mapper(mapper);
+        self.set_mapper(mapper);
 
         Ok(())
     }
