@@ -16,6 +16,7 @@ fun Emulator(viewModel: EmulatorViewModel, controller: NavHostController) {
     val emulatorView = remember { EmulatorView(ctx) }
     val audioTrack = remember { createAudioTrack() }
     val isRunning by viewModel.isRunning
+    val isShortcutLaunch by viewModel.isShortcutLaunch
 
     DisposableEffect(Unit) {
         viewModel.startEmulation()
@@ -34,7 +35,8 @@ fun Emulator(viewModel: EmulatorViewModel, controller: NavHostController) {
     EmulatorBackHandler(
         controller = controller,
         pauseEmulation = viewModel::pauseEmulation,
-        resumeEmulation = viewModel::startEmulation
+        resumeEmulation = viewModel::startEmulation,
+        isShortcutLaunch = isShortcutLaunch,
     )
 
     FullScreenLandscapeBox {

@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import dev.luckasranarison.mes.Activities
 import dev.luckasranarison.mes.Routes
+import dev.luckasranarison.mes.extra.createNewShortcut
 import dev.luckasranarison.mes.vm.EmulatorViewModel
 import dev.luckasranarison.mes.vm.RomLoadingState
 import dev.luckasranarison.mes.ui.rom.RomContainer
@@ -79,10 +80,11 @@ fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
 
             else -> LazyColumn(modifier = Modifier.padding(innerPadding)) {
                 items(romFiles!!.size) { index ->
-                    val file = romFiles!![index]
+                    val rom = romFiles!![index]
                     RomContainer(
-                        rom = file,
-                        onSelect = { viewModel.loadRomFromFile(ctx, file.uri) }
+                        rom = rom,
+                        onSelect = { viewModel.loadRomFromFile(ctx, rom.uri) },
+                        onCreateShortcut = { createNewShortcut(ctx, rom) }
                     )
                 }
             }

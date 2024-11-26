@@ -3,6 +3,8 @@ package dev.luckasranarison.mes
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -21,10 +23,11 @@ data object Routes {
 @Composable
 fun App(viewModel: EmulatorViewModel) {
     val navController = rememberNavController()
+    val isShortcutLaunch by remember { viewModel.isShortcutLaunch }
 
     NavHost(
         navController = navController,
-        startDestination = Routes.HOME,
+        startDestination = if (isShortcutLaunch) Routes.EMULATOR else Routes.HOME,
         enterTransition = { Animations.EnterTransition },
         exitTransition = { Animations.ExitTransition },
         popEnterTransition = { Animations.PopEnterTransition },

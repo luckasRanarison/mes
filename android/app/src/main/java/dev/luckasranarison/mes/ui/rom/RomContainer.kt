@@ -17,13 +17,15 @@ import dev.luckasranarison.mes.data.RomFile
 import dev.luckasranarison.mes.ui.theme.Typography
 
 @Composable
-fun RomContainer(rom: RomFile, onSelect: (Uri) -> Unit) {
+fun RomContainer(rom: RomFile, onSelect: (Uri) -> Unit, onCreateShortcut: () -> Unit) {
     var isSheetVisible by remember { mutableStateOf(false) }
 
     if (isSheetVisible) {
         BottomSheet(
             rom = rom,
-            onClose = { isSheetVisible = false })
+            onClose = { isSheetVisible = false },
+            onCreateShortcut = onCreateShortcut
+        )
     }
 
     Box(
@@ -49,9 +51,7 @@ fun RomContainer(rom: RomFile, onSelect: (Uri) -> Unit) {
             )
 
             Text(
-                text = rom.name
-                    .removeSuffix(".nes")
-                    .removeSuffix(".NES"),
+                text = rom.baseName(),
                 style = Typography.titleMedium,
                 modifier = Modifier
                     .weight(1f)

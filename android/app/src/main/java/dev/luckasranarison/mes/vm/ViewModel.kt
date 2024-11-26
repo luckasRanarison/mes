@@ -29,6 +29,7 @@ class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() 
     private val _romLoadingState = mutableStateOf<RomLoadingState>(RomLoadingState.None)
     private val _isRunning = mutableStateOf(false)
     private val _romFiles = mutableStateOf<List<RomFile>?>(null)
+    private val _isShortcutLaunch = mutableStateOf(false)
     private val nes: NesObject = NesObject()
     private val controller = mutableStateOf(Controller())
 
@@ -37,6 +38,7 @@ class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() 
     val romLoadingState: State<RomLoadingState> = _romLoadingState
     val romFiles: State<List<RomFile>?> = _romFiles
     val isRunning: State<Boolean> = _isRunning
+    val isShortcutLaunch: State<Boolean> = _isShortcutLaunch
 
     override fun onCleared() {
         super.onCleared()
@@ -86,6 +88,10 @@ class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() 
         }
 
         throw Exception("Not a valid iNES file")
+    }
+
+    fun setShortcutLaunch() {
+        _isShortcutLaunch.value = true
     }
 
     fun setRomDirectory(ctx: Context, uri: Uri) {

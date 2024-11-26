@@ -1,5 +1,6 @@
 package dev.luckasranarison.mes
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,8 +29,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         Rust.setPanicHook() // Redirects Rust panics output to Log before crashing
-
+        handleShortcutLaunch()
         enableEdgeToEdge()
+
         setContent {
             MesTheme {
                 App(viewModel = viewModel)
@@ -45,5 +47,15 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.startEmulation()
+    }
+
+    private fun handleShortcutLaunch() {
+        val extras = intent.extras
+        val path = extras?.getString("path")
+
+        if (path !== null) {
+            viewModel.loadRomFromFile(this, Uri.parse(path))
+            viewModel.setShortcutLaunch()
+        }
     }
 }

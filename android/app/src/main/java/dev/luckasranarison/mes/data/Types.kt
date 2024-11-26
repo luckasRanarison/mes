@@ -29,4 +29,10 @@ data class RomFile(
         size = file.length(),
         header = Json.decodeFromString<RomHeader>(metadata)
     )
+
+    fun baseName(): String {
+        return name
+            .removeSuffix(".nes")
+            .removeSuffix(".NES")
+    }
 }

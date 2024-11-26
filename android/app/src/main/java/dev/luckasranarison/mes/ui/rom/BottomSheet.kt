@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -17,12 +18,14 @@ import dev.luckasranarison.mes.lib.PRG_RAM_SIZE
 import dev.luckasranarison.mes.lib.PRG_ROM_PAGE_SIZE
 import dev.luckasranarison.mes.ui.theme.Typography
 import kotlinx.coroutines.launch
+import dev.luckasranarison.mes.R
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun BottomSheet(
     rom: RomFile,
     onClose: () -> Unit,
+    onCreateShortcut: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -57,6 +60,13 @@ fun BottomSheet(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                IconButton(onClick = onCreateShortcut) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.app_shortcut),
+                        contentDescription = "Shortcut",
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
