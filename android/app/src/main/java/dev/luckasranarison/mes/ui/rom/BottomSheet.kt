@@ -93,8 +93,8 @@ fun Metadata(key: String, value: String) {
         Text(
             text = key,
             style = Typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.primary
         )
         Text(
             text = value,

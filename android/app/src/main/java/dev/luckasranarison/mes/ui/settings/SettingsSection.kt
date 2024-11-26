@@ -30,7 +30,7 @@ fun TextValue(label: String, value: String, onChange: () -> Unit) {
         Text(
             text = value,
             modifier = Modifier,
-            color = MaterialTheme.colorScheme.secondary
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
     }
 }
@@ -51,7 +51,7 @@ fun BooleanValue(label: String, description: String, value: Boolean, onToggle: (
             Text(
                 text = description,
                 modifier = Modifier,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
         }
         Switch(
