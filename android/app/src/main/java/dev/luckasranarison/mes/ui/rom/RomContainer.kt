@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.luckasranarison.mes.data.RomFile
+import dev.luckasranarison.mes.ui.rom.sheet.BottomSheet
 import dev.luckasranarison.mes.ui.theme.Typography
 
 @Composable

@@ -2,15 +2,8 @@ package dev.luckasranarison.mes.ui.emulator
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 
@@ -41,10 +34,9 @@ fun EmulatorBackHandler(
             text = { Text(text = "Are you sure to stop the emulation?") },
             confirmButton = {
                 TextButton(onClick = {
-                    if (isShortcutLaunch) {
-                        ctx.finishAffinity()
-                    } else {
-                        controller.popBackStack()
+                    when (isShortcutLaunch) {
+                        true -> ctx.finishAffinity()
+                        else -> controller.popBackStack()
                     }
                 }) {
                     Text(text = "Confirm")
