@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -36,11 +37,11 @@ fun TextValue(label: String, value: String, onChange: () -> Unit) {
 }
 
 @Composable
-fun BooleanValue(label: String, description: String, value: Boolean, onToggle: () -> Unit) {
+fun BooleanValue(label: String, description: String, value: Boolean, onToggle: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onToggle() }
+            .clickable { onToggle(value) }
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -56,7 +57,12 @@ fun BooleanValue(label: String, description: String, value: Boolean, onToggle: (
         }
         Switch(
             checked = value,
-            onCheckedChange = { onToggle() }
+            onCheckedChange = onToggle,
+            colors = SwitchDefaults.colors(
+                uncheckedBorderColor = MaterialTheme.colorScheme.onBackground,
+                uncheckedTrackColor = MaterialTheme.colorScheme.onBackground,
+                uncheckedThumbColor = MaterialTheme.colorScheme.background,
+            )
         )
     }
 }

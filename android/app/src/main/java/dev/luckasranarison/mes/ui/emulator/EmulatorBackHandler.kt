@@ -46,7 +46,7 @@ fun EmulatorBackHandler(
                 TextButton(onClick = { showExitDialog = false }) {
                     Text(text = "Cancel")
                 }
-            }
+            },
         )
     }
 }

@@ -8,21 +8,17 @@ import android.provider.DocumentsContract
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.documentfile.provider.DocumentFile
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.*
 import androidx.lifecycle.viewmodel.CreationExtras
 import dev.luckasranarison.mes.data.RomFile
 import dev.luckasranarison.mes.data.SettingsRepository
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
-import androidx.lifecycle.asLiveData
-import androidx.lifecycle.viewModelScope
 import dev.luckasranarison.mes.data.dataStore
 import dev.luckasranarison.mes.lib.*
 import dev.luckasranarison.mes.ui.emulator.EmulatorView
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.mapNotNull
 import java.io.IOException
 
 class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() {
@@ -35,10 +31,19 @@ class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() 
 
     val romDirectory = settings.getRomDirectory().asLiveData()
     val enableApu = settings.getApuState().asLiveData()
+    val colorPalette = settings.getColorPalette().asLiveData()
     val romLoadingState: State<RomLoadingState> = _romLoadingState
     val romFiles: State<List<RomFile>?> = _romFiles
     val isRunning: State<Boolean> = _isRunning
     val isShortcutLaunch: State<Boolean> = _isShortcutLaunch
+
+    init {
+        viewModelScope.launch {
+            settings.getColorPalette()
+                .mapNotNull { it }
+                .collect{ nes.setColorPalette(it) }
+        }
+    }
 
     override fun onCleared() {
         super.onCleared()
@@ -73,7 +78,7 @@ class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() 
         }
     }
 
-    private fun readRomMetadata(ctx: Context, file: DocumentFile): RomFile? {
+    private fun readRomMetadata(ctx: Context, file: DocumentFile): RomFile {
         val stream = ctx.contentResolver.openInputStream(file.uri)
 
         stream?.use { handle ->
@@ -121,6 +126,23 @@ class EmulatorViewModel(private val settings: SettingsRepository) : ViewModel() 
     fun toggleApuState() {
         viewModelScope.launch {
             settings.toggleApuState()
+        }
+    }
+
+    fun unsetColorPalette() {
+        viewModelScope.launch {
+            nes.setColorPalette(null)
+            settings.setColorPalette(null)
+        }
+    }
+
+    fun setColorPalette(ctx: Context, uri: Uri) {
+        val stream = ctx.contentResolver.openInputStream(uri)
+
+        stream?.use { handle ->
+            val palette = handle.readBytes()
+            nes.setColorPalette(palette)
+            viewModelScope.launch { settings.setColorPalette(palette) }
         }
     }
 

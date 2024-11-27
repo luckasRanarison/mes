@@ -165,6 +165,7 @@ pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_fillFrameBuffer(
     _class: JClass,
     nes: *const Nes,
     int_arr: JIntArray<'static>,
+    palette_arr: JByteArray<'static>,
 ) {
     let buffer = nes.unwrap_ref().get_frame_buffer();
 
@@ -173,12 +174,20 @@ pub extern "C" fn Java_dev_luckasranarison_mes_lib_Nes_fillFrameBuffer(
             .expect("Failed to get frame buffer")
     };
 
+    // FIXME: Find a way to directly access JByteArray elements
+    let palette = env.convert_byte_array(&palette_arr).unwrap_or_default();
+    let palette = match palette_arr.is_null() {
+        true => ppu::COLOR_PALETTE,
+        false => palette.as_slice(),
+    };
+
     for (i, pixel) in buffer.iter().enumerate() {
         let color_index = *pixel as usize;
         let a = 255u32;
-        let r = ppu::COLOR_PALETTE[color_index] as u32;
-        let g = ppu::COLOR_PALETTE[color_index + 1] as u32;
-        let b = ppu::COLOR_PALETTE[color_index + 2] as u32;
+        let r = palette[color_index] as u32;
+        let g = palette[color_index + 1] as u32;
+        let b = palette[color_index + 2] as u32;
+
         elements[i] = (a << 24 | r << 16 | g << 8 | b) as i32;
     }
 }
