@@ -9,11 +9,12 @@ kotlinxSerializationCore = "1.6.3"
 kotlinxSerializationJson = "1.6.3"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.9.3"
-composeBom = "2024.04.01"
+composeBom = "2024.11.00"
 navigationCompose = "2.8.4"
 runtimeLivedata = "1.7.5"
 documentfile = "1.0.1"
 datastorePreferences = "1.1.1"
+material3Jvmstubs = "1.4.0-alpha04"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

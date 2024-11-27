@@ -30,7 +30,8 @@ fun InitialBox(
         Text(
             text = name
                 .split(" ")
-                .take(3).mapNotNull { s -> s.first().takeIf { it.isLetter() } }
+                .take(3)
+                .mapNotNull { it.firstOrNull() }
                 .joinToString("")
                 .ifEmpty { "NES" },
             style = Typography.titleSmall,

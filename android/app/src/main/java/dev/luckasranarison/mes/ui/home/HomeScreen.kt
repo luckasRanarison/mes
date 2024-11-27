@@ -1,10 +1,10 @@
 package dev.luckasranarison.mes.ui.home
 
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -14,10 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import dev.luckasranarison.mes.Activities
 import dev.luckasranarison.mes.Routes
-import dev.luckasranarison.mes.extra.createNewShortcut
 import dev.luckasranarison.mes.vm.EmulatorViewModel
 import dev.luckasranarison.mes.vm.RomLoadingState
-import dev.luckasranarison.mes.ui.rom.RomContainer
+import dev.luckasranarison.mes.ui.rom.RomList
 
 @Composable
 fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
@@ -42,8 +41,10 @@ fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
 
     LaunchedEffect(romLoadingState) {
         if (romLoadingState is RomLoadingState.Success) {
+            Log.i("mes", "launching emulator...")
             controller.navigate(Routes.EMULATOR)
             viewModel.setLoadStatus(RomLoadingState.None)
+            Log.i("mes", "loading state: $romLoadingState")
         }
 
         if (romLoadingState is RomLoadingState.Error) {
@@ -78,16 +79,12 @@ fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
                 onChoose = { chooseRomDirectory.launch(null) }
             )
 
-            else -> LazyColumn(modifier = Modifier.padding(innerPadding)) {
-                items(romFiles!!.size) { index ->
-                    val rom = romFiles!![index]
-                    RomContainer(
-                        rom = rom,
-                        onSelect = { viewModel.loadRomFromFile(ctx, rom.uri) },
-                        onCreateShortcut = { createNewShortcut(ctx, rom) }
-                    )
-                }
-            }
+            else -> RomList(
+                modifier = Modifier.padding(innerPadding),
+                onRefresh = { viewModel.loadRomFromDirectory(ctx, Uri.parse(romDirectory)) },
+                onSelect = { uri -> viewModel.loadRomFromFile(ctx, uri) },
+                romFiles = romFiles!!
+            )
         }
     }
 }

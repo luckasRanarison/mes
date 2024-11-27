@@ -23,6 +23,8 @@ data class RomFile(
     val size: Long,
     val header: RomHeader
 ) {
+    private val attributesRegex = Regex("\\((.*?)\\)|\\[(.*?)]")
+
     constructor(file: DocumentFile, metadata: String) : this(
         name = file.name ?: "Unknown",
         uri = file.uri,
@@ -30,9 +32,12 @@ data class RomFile(
         header = Json.decodeFromString<RomHeader>(metadata)
     )
 
-    fun baseName(): String {
-        return name
-            .removeSuffix(".nes")
-            .removeSuffix(".NES")
-    }
+    fun getAttributes() = attributesRegex
+        .findAll(name)
+        .mapNotNull { it.groups[1]?.value }
+        .toList()
+
+    fun baseName() = name
+        .replace(".nes", "", ignoreCase = true)
+        .replace(attributesRegex, "")
 }

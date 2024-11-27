@@ -8,7 +8,7 @@ import androidx.core.content.ContextCompat.getSystemService
 import dev.luckasranarison.mes.MainActivity
 import dev.luckasranarison.mes.data.RomFile
 
-fun createNewShortcut(ctx: Context, rom: RomFile) {
+fun createShortcut(ctx: Context, rom: RomFile) {
     val shortcutManager = getSystemService(ctx, ShortcutManager::class.java)
 
     val intent = Intent(Intent.ACTION_VIEW, rom.uri, ctx, MainActivity::class.java)

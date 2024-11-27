@@ -17,14 +17,13 @@ import dev.luckasranarison.mes.data.RomFile
 import dev.luckasranarison.mes.ui.theme.Typography
 
 @Composable
-fun RomContainer(rom: RomFile, onSelect: (Uri) -> Unit, onCreateShortcut: () -> Unit) {
+fun RomContainer(rom: RomFile, onSelect: (Uri) -> Unit) {
     var isSheetVisible by remember { mutableStateOf(false) }
 
     if (isSheetVisible) {
         BottomSheet(
             rom = rom,
             onClose = { isSheetVisible = false },
-            onCreateShortcut = onCreateShortcut
         )
     }
 
@@ -44,7 +43,7 @@ fun RomContainer(rom: RomFile, onSelect: (Uri) -> Unit, onCreateShortcut: () -> 
             verticalAlignment = Alignment.CenterVertically
         ) {
             InitialBox(
-                name = rom.name,
+                name = rom.baseName(),
                 modifier = Modifier.padding(start = 8.dp),
                 foreground = MaterialTheme.colorScheme.onSecondary,
                 background = MaterialTheme.colorScheme.secondary
@@ -63,7 +62,7 @@ fun RomContainer(rom: RomFile, onSelect: (Uri) -> Unit, onCreateShortcut: () -> 
             IconButton(onClick = { isSheetVisible = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
-                    contentDescription = "More options",
+                    contentDescription = "Details",
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 )
             }
