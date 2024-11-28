@@ -24,6 +24,7 @@ fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
     val romFiles by viewModel.romFiles
     val romLoadingState by viewModel.romLoadingState
     val romDirectory by viewModel.romDirectory.observeAsState()
+    var showInfoDialog by remember { mutableStateOf(false) }
 
     val loadRomFromFile = rememberLauncherForActivityResult(Activities.GET_CONTENT) { uri ->
         if (uri != null) viewModel.loadRomFromFile(ctx, uri)
@@ -55,7 +56,9 @@ fun Home(viewModel: EmulatorViewModel, controller: NavHostController) {
     }
 
     Scaffold(
-        topBar = { HomeTopAppBar(controller = controller) },
+        topBar = {
+            HomeTopAppBar(controller = controller)
+        },
         floatingActionButton = {
             FloatingButton(onClick = { loadRomFromFile.launch("application/octet-stream") })
         }

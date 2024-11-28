@@ -12,12 +12,14 @@ import dev.luckasranarison.mes.anim.Animations
 import dev.luckasranarison.mes.ui.emulator.Emulator
 import dev.luckasranarison.mes.vm.EmulatorViewModel
 import dev.luckasranarison.mes.ui.home.Home
+import dev.luckasranarison.mes.ui.info.Info
 import dev.luckasranarison.mes.ui.settings.Settings
 
 data object Routes {
     const val HOME = "home"
     const val EMULATOR = "emulator"
     const val SETTINGS = "settings"
+    const val INFO = "info"
 }
 
 @Composable
@@ -38,6 +40,9 @@ fun App(viewModel: EmulatorViewModel) {
         }
         composable(Routes.EMULATOR, popExitTransition = { ExitTransition.None }) {
             Emulator(viewModel = viewModel, controller = navController)
+        }
+        composable(Routes.INFO) {
+            Info(controller = navController)
         }
         composable(Routes.SETTINGS, enterTransition = {
             if (initialState.destination.route == Routes.EMULATOR) EnterTransition.None else null

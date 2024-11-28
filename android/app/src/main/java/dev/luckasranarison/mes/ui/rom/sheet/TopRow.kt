@@ -45,6 +45,7 @@ fun TopRow(rom: RomFile) {
             Icon(
                 painter = painterResource(id = R.drawable.app_shortcut),
                 contentDescription = "Shortcut",
+                modifier = Modifier.size(20.dp)
             )
         }
     }

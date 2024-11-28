@@ -33,10 +33,6 @@ fun Settings(viewModel: EmulatorViewModel, onExit: () -> Unit) {
         }
     }
 
-    LaunchedEffect(colorPalette) {
-        showPaletteOptions = colorPalette != null
-    }
-
     val chooseRomDirectory = rememberLauncherForActivityResult(Activities.GET_DIRECTORY) { uri ->
         if (uri != null) wrapBlock { viewModel.setRomDirectory(ctx, uri) }
     }
@@ -44,6 +40,10 @@ fun Settings(viewModel: EmulatorViewModel, onExit: () -> Unit) {
     val chooseColorPalette = rememberLauncherForActivityResult(Activities.GET_CONTENT) { uri ->
         if (uri != null) wrapBlock { viewModel.setColorPalette(ctx, uri) }
 
+    }
+
+    LaunchedEffect(colorPalette) {
+        showPaletteOptions = colorPalette != null
     }
 
     Scaffold(
