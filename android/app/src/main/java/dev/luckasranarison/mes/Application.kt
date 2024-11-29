@@ -13,6 +13,7 @@ import dev.luckasranarison.mes.ui.emulator.Emulator
 import dev.luckasranarison.mes.vm.EmulatorViewModel
 import dev.luckasranarison.mes.ui.home.Home
 import dev.luckasranarison.mes.ui.info.Info
+import dev.luckasranarison.mes.ui.license.License
 import dev.luckasranarison.mes.ui.settings.Settings
 
 data object Routes {
@@ -20,6 +21,7 @@ data object Routes {
     const val EMULATOR = "emulator"
     const val SETTINGS = "settings"
     const val INFO = "info"
+    const val LICENSE = "licenses"
 }
 
 @Composable
@@ -43,6 +45,9 @@ fun App(viewModel: EmulatorViewModel) {
         }
         composable(Routes.INFO) {
             Info(controller = navController)
+        }
+        composable(Routes.LICENSE) {
+            License(controller = navController)
         }
         composable(Routes.SETTINGS, enterTransition = {
             if (initialState.destination.route == Routes.EMULATOR) EnterTransition.None else null

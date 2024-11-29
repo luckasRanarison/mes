@@ -12,8 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-
 import dev.luckasranarison.mes.Activities
+import dev.luckasranarison.mes.ui.shared.GenericTopAppBar
 import dev.luckasranarison.mes.vm.EmulatorViewModel
 
 @Composable
@@ -48,7 +48,7 @@ fun Settings(viewModel: EmulatorViewModel, onExit: () -> Unit) {
 
     Scaffold(
         topBar = {
-            SettingsTopAppBar(onExit = onExit)
+            GenericTopAppBar(title = "Settings", onExit = onExit)
         },
     ) { innerPadding ->
         Column(
