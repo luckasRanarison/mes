@@ -4,11 +4,24 @@
 
 # Mes
 
-A decent NES emulator built for the Web using Rust and WebAssembly. Try it [now](https://luckasranarison.github.io/mes/).
+A decent multiplatform NES emulator built using Rust. Try it [now](https://luckasranarison.github.io/mes/) in your browser.
+
+## Contents
+- [Supported platforms](#supported-platforms)
+- [Features](#features)
+- [Mappers](#mappers)
+- [Build](#build)
+- [Resources](#resources)
+
+## Supported platforms
+
+- [x] Web
+- [x] Android
+- [ ] Desktop
+- [ ] Embedded (ESP32)
 
 ## Features
 
-- Almost cycle accurate emulation
 - Supports [iNES 1.0](https://www.nesdev.org/wiki/INES) file format
 - Supports basic [mappers](#mappers)
 - Fairly decent audio quality
@@ -21,12 +34,59 @@ A decent NES emulator built for the Web using Rust and WebAssembly. Try it [now]
 - [UXROM](https://nesdir.github.io/mapper2.html) (2)
 - [CNROM](https://nesdir.github.io/mapper2.html) (3)
 
-## TODOs
+## Build
 
-- [ ] Settings interface (controllers, palette, ...)
-- [ ] Versions for other platforms (mobile, desktop, ...)
+> [!IMPORTANT]
+> The Rust [toolchain](https://rustup.rs/) is required to build the main library.
 
-## References
+### Web
+
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
+![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=fff&style=for-the-badge)
+
+**Requirements**:
+
+- [NodeJS](https://nodejs.org/en)
+- [wasmpack](https://rustwasm.github.io/wasm-pack/)
+
+**Scripts**:
+
+```bash
+npm run wasm # build the WASM artifacts using wasmpack
+npm run dev # run the dev server
+npm run build # build the website
+```
+
+### Android
+
+![Kotlin](https://img.shields.io/badge/kotlin-%237F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)
+
+**Requirements**:
+
+- [Android studio](https://developer.android.com/studio)
+- [NDK](https://developer.android.com/ndk)
+- `aarch64-linux-android` and `x86_64-linux-android` Rust targets
+
+**Setup**:
+
+Edit your global cargo config in `~/.cargo/cargo.toml` and use linkers from NDK:
+
+```toml
+[target.aarch64-linux-android]
+linker = "your-ndk-pah/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang"
+
+[target.x86_64-linux-android]
+linker = "your-ndk-pah/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android34-clang"
+```
+
+**Gradle scripts**:
+
+- `buildRustArm64`: Build the shared library for arm64
+- `buildRustx86_64`: Build the shared library for x86_64
+- `buildRs`: Runs both
+
+## Resources
 
 This project wouldn't have been possible without the help of the following ressources:
 

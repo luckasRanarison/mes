@@ -8,7 +8,7 @@ use self::{mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::C
 use crate::{
     cartridge::{Cartridge, Mirroring},
     error::Error,
-    utils::Reset,
+    utils::{MemoryObserver, Reset},
 };
 
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
@@ -17,6 +17,30 @@ pub trait Mapper: Debug + Reset {
     fn read(&self, address: u16) -> u8;
     fn write(&mut self, address: u16, value: u8);
     fn get_mirroring(&self) -> Mirroring;
+}
+
+pub struct MapperBuilder {
+    cartridge: Cartridge,
+}
+
+impl MapperBuilder {
+    pub fn new(cartridge: &[u8]) -> Result<Self, Error> {
+        Ok(Self {
+            cartridge: Cartridge::try_from_bytes(cartridge)?,
+        })
+    }
+
+    pub fn with_observer<T>(mut self, observer: T) -> Self
+    where
+        T: MemoryObserver + 'static,
+    {
+        self.cartridge.observer = Some(Box::new(observer));
+        self
+    }
+
+    pub fn build(self) -> Result<MapperChip, Error> {
+        MapperChip::try_from(self.cartridge)
+    }
 }
 
 #[derive(Debug, Clone)]

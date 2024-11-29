@@ -8,6 +8,11 @@ pub mod mappers;
 pub mod ppu;
 pub mod utils;
 
+mod features;
+
+#[cfg(feature = "json")]
+pub use features::json;
+
 use std::cell::Ref;
 
 use bus::MainBus;
@@ -18,7 +23,7 @@ use utils::Reset;
 
 #[derive(Debug)]
 pub struct Nes {
-    cpu: Cpu,
+    pub(crate) cpu: Cpu,
 }
 
 impl Nes {
@@ -37,9 +42,13 @@ impl Nes {
         Self { cpu }
     }
 
+    pub fn set_mapper(&mut self, mapper: MapperChip) {
+        self.cpu.bus.set_mapper(mapper);
+    }
+
     pub fn set_cartridge(&mut self, bytes: &[u8]) -> Result<(), Error> {
         let mapper = MapperChip::try_from_bytes(bytes)?;
-        self.cpu.bus.set_mapper(mapper);
+        self.set_mapper(mapper);
 
         Ok(())
     }
@@ -48,15 +57,19 @@ impl Nes {
         self.cpu.reset();
     }
 
+    pub fn step(&mut self) {
+        self.cpu.step();
+    }
+
     pub fn step_frame(&mut self) {
         while !self.cpu.bus.ppu.is_vblank() {
-            self.cpu.step();
+            self.step();
         }
     }
 
     pub fn step_vblank(&mut self) {
         while self.cpu.bus.ppu.is_vblank() {
-            self.cpu.step();
+            self.step();
         }
     }
 

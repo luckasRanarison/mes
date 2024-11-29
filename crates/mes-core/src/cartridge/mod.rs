@@ -1,6 +1,12 @@
 // https://www.nesdev.org/wiki/INES
 
-use crate::{error::Error, utils::BitFlag};
+use crate::{
+    error::Error,
+    utils::{BitFlag, MemoryObserver},
+};
+
+#[cfg(feature = "json")]
+use serde::Serialize;
 
 const INES_ASCII: [u8; 4] = [0x4E, 0x45, 0x53, 0x1A];
 const INES_HEADER_SIZE: usize = 16;
@@ -10,7 +16,12 @@ const PRG_RAM_SIZE: usize = 8192;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
 const CHR_RAM_PAGE_SIZE: usize = 8192;
 
+pub fn is_ines_file(bytes: &[u8]) -> bool {
+    bytes[0..4] == INES_ASCII
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize))]
 pub enum Mirroring {
     Vertical,
     Horizontal,
@@ -19,6 +30,7 @@ pub enum Mirroring {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize))]
 pub struct Header {
     pub prg_rom_pages: u8,
     pub chr_rom_pages: u8,
@@ -30,8 +42,8 @@ pub struct Header {
 }
 
 impl Header {
-    fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        if bytes[0..4] != INES_ASCII {
+    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        if !is_ines_file(bytes) {
             return Err(Error::UnsupportedFileFormat);
         }
 
@@ -76,13 +88,19 @@ pub enum PrgPage {
     Last16,
 }
 
-#[derive(Debug)]
 pub struct Cartridge {
     pub header: Header,
     pub prg_rom: Vec<u8>,
     pub chr_rom: Vec<u8>,
     pub prg_ram: Vec<u8>,
     pub chr_ram: Vec<u8>,
+    pub observer: Option<Box<dyn MemoryObserver>>,
+}
+
+impl std::fmt::Debug for Cartridge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.header)
+    }
 }
 
 impl Cartridge {
@@ -106,11 +124,16 @@ impl Cartridge {
             chr_rom,
             prg_ram,
             chr_ram,
+            observer: None,
         })
     }
 
     pub fn write_prg_ram(&mut self, address: u16, value: u8) {
         self.prg_ram[address as usize & 0x1FFF] = value;
+
+        if let Some(observer) = &mut self.observer {
+            observer.observe(&self.prg_ram);
+        }
     }
 
     pub fn write_chr_ram(&mut self, address: u16, value: u8, page: ChrPage) {
@@ -171,6 +194,7 @@ impl Default for Cartridge {
             chr_rom: vec![0; CHR_ROM_PAGE_SIZE],
             prg_ram: vec![],
             chr_ram: vec![],
+            observer: None,
         }
     }
 }
