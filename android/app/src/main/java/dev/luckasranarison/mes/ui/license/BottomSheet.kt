@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mikepenz.aboutlibraries.entity.Library
 import dev.luckasranarison.mes.R
+import dev.luckasranarison.mes.ui.theme.Typography
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,7 +23,7 @@ fun BottomSheet(library: Library, onClose: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
-        onDismissRequest = { onClose() },
+        onDismissRequest = onClose,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
@@ -57,18 +58,19 @@ fun BottomSheet(library: Library, onClose: () -> Unit) {
             }
 
             Text(
-                text = "Description: ${library.description ?: "No description"}",
+                text = library.description ?: "No description",
                 modifier = Modifier.padding(16.dp)
             )
 
             HorizontalDivider(thickness = 1.dp)
 
-            library.licenses.forEach {
-                Text(
-                    text = it.licenseContent ?: "No license",
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+            Text(
+                text = library.licenses
+                    .mapNotNull { it.licenseContent }
+                    .joinToString("\n"),
+                modifier = Modifier.padding(16.dp),
+                style = Typography.bodyMedium
+            )
         }
     }
 }
