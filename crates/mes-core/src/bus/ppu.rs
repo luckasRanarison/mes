@@ -1,7 +1,7 @@
 use crate::{
     bus::Bus,
-    cartridge::Mirroring,
     mappers::{Mapper, MapperChip},
+    rom::Mirroring,
     utils::{Clock, Reset},
 };
 

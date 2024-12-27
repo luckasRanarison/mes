@@ -2,7 +2,10 @@
 
 use super::Mapper;
 use crate::{
-    cartridge::{Cartridge, ChrPage, Mirroring, PrgPage},
+    rom::{
+        cartridge::{Cartridge, ChrPage, PrgPage},
+        Mirroring,
+    },
     utils::{BitFlag, Reset},
 };
 
@@ -102,7 +105,7 @@ impl Mapper for SxRom {
         }
     }
 
-    fn get_mirroring(&self) -> crate::cartridge::Mirroring {
+    fn get_mirroring(&self) -> crate::rom::Mirroring {
         match self.control & 0b11 {
             2 => Mirroring::Vertical,
             3 => Mirroring::Horizontal,

@@ -6,8 +6,8 @@ mod mapper_003;
 use self::{mapper_000::NRom, mapper_001::SxRom, mapper_002::UxRom, mapper_003::CnRom};
 
 use crate::{
-    cartridge::{Cartridge, Mirroring},
     error::Error,
+    rom::{cartridge::Cartridge, Mirroring},
     utils::{MemoryObserver, Reset},
 };
 
@@ -26,7 +26,7 @@ pub struct MapperBuilder {
 impl MapperBuilder {
     pub fn new(cartridge: &[u8]) -> Result<Self, Error> {
         Ok(Self {
-            cartridge: Cartridge::try_from_bytes(cartridge)?,
+            cartridge: Cartridge::try_from_ines(cartridge)?,
         })
     }
 
@@ -58,7 +58,7 @@ impl MapperChip {
     }
 
     pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        Cartridge::try_from_bytes(bytes).and_then(MapperChip::try_from)
+        Cartridge::try_from_ines(bytes).and_then(MapperChip::try_from)
     }
 }
 
