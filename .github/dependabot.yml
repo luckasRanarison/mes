@@ -9,3 +9,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: "maven"
+    directories:
+      - "/android"
+      - "/android/app"
+    schedule:
+      interval: "weekly"
