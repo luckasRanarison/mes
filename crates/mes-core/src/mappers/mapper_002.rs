@@ -2,7 +2,10 @@
 
 use super::Mapper;
 use crate::{
-    cartridge::{Cartridge, ChrPage, Mirroring, PrgPage},
+    rom::{
+        cartridge::{Cartridge, ChrPage, PrgPage},
+        Mirroring,
+    },
     utils::Reset,
 };
 
