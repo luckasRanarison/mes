@@ -3,6 +3,10 @@ name: Deploy
 on:
   push:
     branches: ["main"]
+    paths:
+      - "web/**"
+      - "crates/mes-core/**"
+      - "crates/mes-wasm/**"
 
   workflow_dispatch:
 
