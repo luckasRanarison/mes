@@ -10,7 +10,7 @@ authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
 [dependencies]
 mes-core = { path = "../mes-core" }
 wasm-bindgen = "0.2.90"
-web-sys = { version = "0.3.76", features = ["ImageData"] }
+web-sys = { version = "0.3.77", features = ["ImageData"] }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
