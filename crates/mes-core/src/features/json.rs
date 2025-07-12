@@ -1,3 +1,5 @@
+use alloc::string::String;
+
 use crate::{cartridge::Header, error::Error};
 
 pub fn serialize_rom_header(bytes: &[u8]) -> Result<String, Error> {

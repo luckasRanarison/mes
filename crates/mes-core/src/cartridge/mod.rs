@@ -1,5 +1,7 @@
 // https://www.nesdev.org/wiki/INES
 
+use alloc::{boxed::Box, vec, vec::Vec};
+
 use crate::{
     error::Error,
     utils::{BitFlag, MemoryObserver},
@@ -97,8 +99,8 @@ pub struct Cartridge {
     pub observer: Option<Box<dyn MemoryObserver>>,
 }
 
-impl std::fmt::Debug for Cartridge {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Cartridge {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}", self.header)
     }
 }

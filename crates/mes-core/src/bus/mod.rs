@@ -10,7 +10,8 @@ use crate::{
     utils::{Clock, Reset},
 };
 
-use std::{cell::RefCell, fmt::Debug, rc::Rc};
+use alloc::rc::Rc;
+use core::{cell::RefCell, fmt::Debug};
 
 pub use {dma::DmaState, ppu::PpuBus};
 

@@ -1,3 +1,7 @@
+#![no_std]
+
+extern crate alloc;
+
 pub mod apu;
 pub mod bus;
 pub mod cartridge;
@@ -13,7 +17,7 @@ mod features;
 #[cfg(feature = "json")]
 pub use features::json;
 
-use std::cell::Ref;
+use core::cell::Ref;
 
 use bus::MainBus;
 use cpu::Cpu;

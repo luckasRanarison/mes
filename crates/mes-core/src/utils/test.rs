@@ -1,4 +1,5 @@
-use std::{error::Error, fmt};
+use alloc::boxed::Box;
+use core::{error::Error, fmt};
 
 use super::BitFlag;
 
