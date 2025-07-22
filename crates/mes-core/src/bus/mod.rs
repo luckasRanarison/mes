@@ -123,7 +123,7 @@ impl Bus for MainBus {
             0x4015 => self.apu.borrow_mut().read_status(),
             0x4016 | 0x4017 => self.read_controller(address & 1),
             0x4020..=0xFFFF => self.mapper.read(address),
-            _ => panic!("Trying to read from write-only address: 0x{:x}", address),
+            _ => panic!("Trying to read from write-only address: 0x{address:x}"),
         }
     }
 
@@ -149,7 +149,7 @@ impl Bus for MainBus {
             0x4014 => self.setup_oam_dma(value),
             0x4016 => self.write_controller(value),
             0x4020..=0xFFFF => self.mapper.write(address, value),
-            _ => panic!("Trying to write to read-only address: 0x{:x}", address),
+            _ => panic!("Trying to write to read-only address: 0x{address:x}"),
         }
     }
 }

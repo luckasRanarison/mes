@@ -69,7 +69,7 @@ impl Mapper for SxRom {
             0xC000..=0xFFFF if !self.control.contains(2) => self
                 .cartridge
                 .read_prg_rom(address, PrgPage::Index16(self.prg_bank)),
-            _ => panic!("Trying to read from invalid address: 0x{:x}", address),
+            _ => panic!("Trying to read from invalid address: 0x{address:x}"),
         }
     }
 

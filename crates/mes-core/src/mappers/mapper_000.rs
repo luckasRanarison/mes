@@ -25,7 +25,7 @@ impl Mapper for NRom {
             0x6000..=0x7FFF => self.cartridge.read_prg_ram(address),
             0x8000..=0xBFFF => self.cartridge.read_prg_rom(address, PrgPage::Index16(0)),
             0xC000..=0xFFFF => self.cartridge.read_prg_rom(address, PrgPage::Last16),
-            _ => panic!("Trying to read from an invalid address: 0x{:x}", address),
+            _ => panic!("Trying to read from an invalid address: 0x{address:x}"),
         }
     }
 

@@ -363,17 +363,17 @@ impl Ppu {
         let y = self.scanline as usize;
 
         if x < 256 && y < 240 {
-            let (bg_pixel, bg_palette) = self
-                .mask
-                .show_background()
-                .then(|| self.get_background_pixel())
-                .unwrap_or_default();
+            let (bg_pixel, bg_palette) = if self.mask.show_background() {
+                self.get_background_pixel()
+            } else {
+                Default::default()
+            };
 
-            let (sp_pixel, sp_palette, sp_priority) = self
-                .mask
-                .show_sprites()
-                .then(|| self.get_sprite_pixel())
-                .unwrap_or_default();
+            let (sp_pixel, sp_palette, sp_priority) = if self.mask.show_sprites() {
+                self.get_sprite_pixel()
+            } else {
+                Default::default()
+            };
 
             let (pixel, palette) = match (bg_pixel, sp_pixel) {
                 (0, 0) => (0, 0),
@@ -542,7 +542,7 @@ mod tests {
         ppu.write_addr(0x50);
 
         assert_eq!(ppu.v_addr.get(), 0x2050);
-        assert_eq!(ppu.latch, false);
+        assert!(!ppu.latch);
 
         ppu.write_data(0x45);
 
