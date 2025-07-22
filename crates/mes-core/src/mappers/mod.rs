@@ -11,7 +11,8 @@ use crate::{
     utils::{MemoryObserver, Reset},
 };
 
-use std::{cell::RefCell, fmt::Debug, rc::Rc};
+use alloc::{boxed::Box, rc::Rc};
+use core::{cell::RefCell, fmt::Debug};
 
 pub trait Mapper: Debug + Reset {
     fn read(&self, address: u16) -> u8;

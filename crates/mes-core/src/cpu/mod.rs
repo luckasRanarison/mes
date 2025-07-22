@@ -19,11 +19,11 @@ use crate::{
     utils::{BitFlag, Clock, Reset},
 };
 
-use std::{
+use alloc::rc::Rc;
+use core::{
     cell::RefCell,
     fmt,
     ops::{BitAnd, BitOr, BitXor},
-    rc::Rc,
 };
 
 pub struct Cpu {
@@ -816,6 +816,16 @@ mod tests {
         utils::test::{LogLine, NESTEST_LOG, NESTEST_ROM},
     };
 
+    macro_rules! assert_eq_dbg {
+        ($left:expr, $right:expr, $name:expr, $fmt:expr) => {
+            assert_eq!(
+                $left, $right,
+                concat!($name, " mismatch: parsed = ", $fmt, ", cpu = ", $fmt),
+                $left, $right
+            );
+        };
+    }
+
     #[test]
     fn test_cpu_nestest() {
         let mapper = MapperChip::try_from_bytes(NESTEST_ROM).unwrap();
@@ -834,16 +844,14 @@ mod tests {
             let parsed = LogLine::from_line(line).unwrap();
             let opcode = cpu.bus.read_u8(cpu.pc);
 
-            println!("\nLine: {parsed:?}\nCPU: {cpu:?}");
-
-            assert_eq!(parsed.opcode, opcode, "opcode");
-            assert_eq!(parsed.pc, cpu.pc, "pc");
-            assert_eq!(parsed.a, cpu.ac, "acc");
-            assert_eq!(parsed.x, cpu.x, "x");
-            assert_eq!(parsed.y, cpu.y, "y");
-            assert_eq!(parsed.sp, cpu.sp, "sp");
-            assert_eq!(parsed.sr, cpu.sr.value(), "sr");
-            assert_eq!(parsed.cycle, cpu.cycle, "cycle");
+            assert_eq_dbg!(parsed.opcode, opcode, "opcode", "{:#04X}");
+            assert_eq_dbg!(parsed.pc, cpu.pc, "pc", "{:#06X}");
+            assert_eq_dbg!(parsed.a, cpu.ac, "acc", "{:#04X}");
+            assert_eq_dbg!(parsed.x, cpu.x, "x", "{:#04X}");
+            assert_eq_dbg!(parsed.y, cpu.y, "y", "{:#04X}");
+            assert_eq_dbg!(parsed.sp, cpu.sp, "sp", "{:#04X}");
+            assert_eq_dbg!(parsed.sr, cpu.sr.value(), "sr", "{:#010b}");
+            assert_eq_dbg!(parsed.cycle, cpu.cycle, "cycle", "{}");
 
             cpu.step();
         }

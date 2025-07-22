@@ -3,6 +3,8 @@
 mod internals;
 mod registers;
 
+use alloc::boxed::Box;
+
 use crate::{
     bus::{Bus, PpuBus},
     mappers::MapperChip,
@@ -36,7 +38,7 @@ pub struct Ppu {
     oam: OamData,
     bg: BackgroundData,
     sprite: SpriteData,
-    frame_buffer: [u8; FRAME_BUFFER_SIZE],
+    frame_buffer: Box<[u8; FRAME_BUFFER_SIZE]>,
     pub(crate) bus: PpuBus,
 }
 
@@ -60,7 +62,7 @@ impl Ppu {
             oam: OamData::default(),
             bg: BackgroundData::default(),
             sprite: SpriteData::default(),
-            frame_buffer: [0; FRAME_BUFFER_SIZE],
+            frame_buffer: Box::new([0; FRAME_BUFFER_SIZE]),
         }
     }
 }
