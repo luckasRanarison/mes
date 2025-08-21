@@ -1,4 +1,4 @@
-use std::{cell::RefCell, f32::consts::PI};
+use core::{cell::RefCell, f32::consts::PI};
 
 const SAMPLE_RATE: f32 = 44100.0;
 

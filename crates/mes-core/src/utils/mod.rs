@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Range, Shl, Shr, Sub};
+use core::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Range, Shl, Shr, Sub};
 
 #[cfg(test)]
 pub mod test;

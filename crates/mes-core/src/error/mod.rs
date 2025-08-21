@@ -1,3 +1,5 @@
+use alloc::string::String;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     UnsupportedFileFormat,
@@ -9,14 +11,14 @@ pub enum Error {
 impl Error {
     pub fn eof(expected: &str, length: usize) -> Self {
         Self::UnexpectedEndOfInput {
-            expected: expected.to_owned(),
+            expected: expected.into(),
             length,
         }
     }
 }
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Error::UnsupportedFileFormat => write!(f, "The loaded file is not an iNES file"),
             Error::UnsupportedVersion => write!(f, "iNES 2.0 is not supported"),
@@ -31,4 +33,4 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl core::error::Error for Error {}
